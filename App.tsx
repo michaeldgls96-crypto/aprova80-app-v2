@@ -1,0 +1,1213 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
+import {
+  Flame, CheckCircle, Zap, ShieldCheck, Home, 
+  AlertTriangle, ChevronRight, FileText, BookOpen, 
+  X, Download, PieChart, Layers, Filter, Printer, 
+  Smartphone, Mail, KeyRound, LogOut, Lock, PenLine
+} from 'lucide-react';
+
+// INTERFACES
+interface Option {
+  letter: string;
+  text: string;
+}
+
+interface Question {
+  id: string;
+  discipline: string;
+  topic: string;
+  statement: string;
+  options: Option[];
+  correctAnswer: string;
+  explanation?: string;
+}
+
+interface Material {
+  id: string;
+  title: string;
+  discipline: string;
+  type: string; // 'resumo' | 'mapa_mental'
+  topic: string;
+  content: string;
+}
+
+// ESTRUTURA DE MATÉRIAS E SEUS TÓPICOS
+const ESTRUTURA_MATERIAS: Record<string, string[]> = {
+  'Todas': ['Todos'],
+  'Língua Portuguesa': ['Todos', 'Compreensão e Interpretação de Textos', 'Acentuação Gráfica', 'Ortografia Oficial', 'Crase', 'Crase e Regência', 'Concordância Verbal'],
+  'Raciocínio Lógico': ['Todos', 'Lógica de Proposições', 'Equivalências Lógicas'],
+  'Informática': ['Todos', 'Segurança da Informação', 'Malwares', 'Backup', 'Hardware - Armazenamento', 'Correio Eletrônico', 'Criptografia'],
+  'Direito Penal': ['Todos', 'Excludentes de Ilicitude', 'Crimes Contra a Pessoa'],
+  'Processo Penal': ['Todos', 'Inquérito Policial', 'Prisão e Liberdade'],
+  'Direito Constitucional': ['Todos', 'Remédios Constitucionais', 'Direitos e Garantias Fundamentais'],
+  'Direito Administrativo': ['Todos', 'Atos Administrativos', 'Organização Administrativa'],
+  'Legislação Extravagante': ['Todos', 'Lei de Abuso de Autoridade', 'Lei de Drogas'],
+  'Direitos Humanos': ['Todos', 'Declaração Universal dos Direitos Humanos']
+};
+
+const LISTA_DISCIPLINAS = Object.keys(ESTRUTURA_MATERIAS).filter(m => m !== 'Todas');
+
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+// RENDERIZADOR SIMPLES DE TEXTO FORMATADO (SEM DEPENDÊNCIA EXTERNA)
+// Suporta: # ## ### para títulos, - ou * para listas, **texto** para negrito
+function renderInline(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="text-slate-100 font-bold">{part.slice(2, -2)}</strong>;
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+}
+
+function renderContent(content: string): React.ReactNode {
+  if (!content) return null;
+  const lines = content.split('\n');
+  const elements: React.ReactNode[] = [];
+  let listItems: string[] = [];
+  let key = 0;
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={`ul-${key++}`} className="list-disc list-inside space-y-1 my-2 marker:text-amber-500">
+          {listItems.map((item, i) => (
+            <li key={i} className="text-sm text-slate-300 leading-relaxed">{renderInline(item)}</li>
+          ))}
+        </ul>
+      );
+      listItems = [];
+    }
+  };
+
+  lines.forEach((rawLine) => {
+    const trimmed = rawLine.trim();
+    if (trimmed.startsWith('### ')) {
+      flushList();
+      elements.push(<h4 key={key++} className="text-sm font-bold text-amber-400 mt-4 mb-1">{renderInline(trimmed.slice(4))}</h4>);
+    } else if (trimmed.startsWith('## ')) {
+      flushList();
+      elements.push(<h3 key={key++} className="text-base font-bold text-amber-500 mt-4 mb-2">{renderInline(trimmed.slice(3))}</h3>);
+    } else if (trimmed.startsWith('# ')) {
+      flushList();
+      elements.push(<h2 key={key++} className="text-lg font-black text-amber-500 mt-4 mb-2">{renderInline(trimmed.slice(2))}</h2>);
+    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      listItems.push(trimmed.slice(2));
+    } else if (trimmed === '') {
+      flushList();
+    } else {
+      flushList();
+      elements.push(<p key={key++} className="text-sm text-slate-300 leading-relaxed my-2">{renderInline(trimmed)}</p>);
+    }
+  });
+  flushList();
+  return elements;
+}
+
+// ITENS DE NAVEGAÇÃO (usados tanto na barra inferior mobile quanto no menu lateral desktop)
+const NAV_ITEMS: { id: 'home' | 'simulado' | 'caderno' | 'materiais' | 'anotacoes' | 'stats'; label: string; icon: any }[] = [
+  { id: 'home', label: 'Início', icon: Home },
+  { id: 'simulado', label: 'Treinar', icon: Zap },
+  { id: 'materiais', label: 'Materiais', icon: BookOpen },
+  { id: 'anotacoes', label: 'Anotações', icon: PenLine },
+  { id: 'caderno', label: 'Erros', icon: AlertTriangle },
+  { id: 'stats', label: 'Desempenho', icon: PieChart },
+];
+
+export default function App() {
+  // ESTADOS DE LOGIN / AUTENTICAÇÃO
+  const [session, setSession] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
+
+  // ESTADOS DE TROCA DE SENHA OBRIGATÓRIA (PRIMEIRO ACESSO)
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmaSenha, setConfirmaSenha] = useState('');
+  const [trocandoSenha, setTrocandoSenha] = useState(false);
+  const [erroSenha, setErroSenha] = useState('');
+
+  // ESTADOS NAVEGAÇÃO
+  const [activeTab, setActiveTab] = useState<'home' | 'simulado' | 'caderno' | 'materiais' | 'anotacoes' | 'stats'>('home');
+  const [selectedDiscipline, setSelectedDiscipline] = useState<string>(LISTA_DISCIPLINAS[0] || 'Língua Portuguesa');
+  const [materialTab, setMaterialTab] = useState<'resumo' | 'mapa_mental'>('resumo');
+  const [materialTopic, setMaterialTopic] = useState<string>('Todos');
+
+  // ESTADOS DE FILTRO
+  const [filterDiscipline, setFilterDiscipline] = useState<string>('Todas');
+  const [filterTopic, setFilterTopic] = useState<string>('Todos');
+
+  // PWA (INSTALAÇÃO)
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  // QUESTÕES
+  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
+  const [filteredQuestions, setFilteredQuestions] = useState<Question[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [isAnswered, setIsAnswered] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [loadingQuestions, setLoadingQuestions] = useState(true);
+
+  // MATERIAIS (RESUMOS E MAPAS MENTAIS)
+  const [allMaterials, setAllMaterials] = useState<Material[]>([]);
+  const [loadingMaterials, setLoadingMaterials] = useState(true);
+
+  // ANOTAÇÕES PESSOAIS
+  const [notesDiscipline, setNotesDiscipline] = useState<string>(LISTA_DISCIPLINAS[0] || 'Língua Portuguesa');
+  const [notes, setNotes] = useState<Record<string, string>>(() => {
+    const salvos = localStorage.getItem('aprova80_anotacoes');
+    return salvos ? JSON.parse(salvos) : {};
+  });
+
+  const [stats, setStats] = useState(() => {
+    const salvos = localStorage.getItem('aprova80_stats');
+    return salvos ? JSON.parse(salvos) : { totalRespondidas: 0, totalAcertos: 0 };
+  });
+
+  const [cadernoErros, setCadernoErros] = useState<Question[]>(() => {
+    const salvos = localStorage.getItem('aprova80_erros');
+    return salvos ? JSON.parse(salvos) : [];
+  });
+
+  // MONITORAR SESSÃO DO SUPABASE
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError('');
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setAuthError('E-mail ou senha incorretos.');
+    }
+    setAuthLoading(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  // TROCA DE SENHA OBRIGATÓRIA NO PRIMEIRO ACESSO
+  const handleTrocarSenha = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErroSenha('');
+
+    if (novaSenha.length < 8) {
+      setErroSenha('A senha precisa ter pelo menos 8 caracteres.');
+      return;
+    }
+    if (novaSenha !== confirmaSenha) {
+      setErroSenha('As senhas não coincidem.');
+      return;
+    }
+
+    setTrocandoSenha(true);
+
+    const { data, error } = await supabase.auth.updateUser({
+      password: novaSenha,
+      data: { must_change_password: false }
+    });
+
+    if (error) {
+      setErroSenha('Não foi possível trocar a senha. Tente novamente.');
+    } else if (data?.user) {
+      // Atualiza a sessão local imediatamente para liberar o acesso sem precisar recarregar
+      setSession((prev: any) => prev ? { ...prev, user: data.user } : prev);
+      setNovaSenha('');
+      setConfirmaSenha('');
+    }
+
+    setTrocandoSenha(false);
+  };
+
+  // FUNÇÃO DE IMPRESSÃO / SALVAR EM PDF
+  const handlePrintPDF = () => {
+    window.print();
+  };
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstallable(false);
+    }
+    setDeferredPrompt(null);
+  };
+
+  useEffect(() => {
+    localStorage.setItem('aprova80_erros', JSON.stringify(cadernoErros));
+  }, [cadernoErros]);
+
+  useEffect(() => {
+    localStorage.setItem('aprova80_stats', JSON.stringify(stats));
+  }, [stats]);
+
+  useEffect(() => {
+    localStorage.setItem('aprova80_anotacoes', JSON.stringify(notes));
+  }, [notes]);
+
+  // BUSCA DE QUESTÕES NO SUPABASE
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoadingQuestions(true);
+        const { data: qData, error } = await supabase.from('questions').select('*');
+        
+        if (error) {
+          console.error('Erro na requisição ao Supabase:', error);
+          return;
+        }
+
+        if (qData && qData.length > 0) {
+          const formattedQuestions: Question[] = qData.map((q: any) => {
+            let optionsList: Option[] = [];
+            
+            if (Array.isArray(q.options) && q.options.length > 0) {
+              optionsList = q.options;
+            } else if (typeof q.options === 'string') {
+              try {
+                optionsList = JSON.parse(q.options);
+              } catch (e) {
+                optionsList = [];
+              }
+            } else {
+              const optA = q.option_a || q.a;
+              const optB = q.option_b || q.b;
+              const optC = q.option_c || q.c;
+              const optD = q.option_d || q.d;
+
+              if (optA) optionsList.push({ letter: 'A', text: optA });
+              if (optB) optionsList.push({ letter: 'B', text: optB });
+              if (optC) optionsList.push({ letter: 'C', text: optC });
+              if (optD) optionsList.push({ letter: 'D', text: optD });
+            }
+
+            return {
+              id: String(q.id),
+              discipline: q.discipline || q.materia || q.disciplina || 'Geral',
+              topic: q.topic || q.assunto || q.topico || 'Geral',
+              statement: q.statement || q.pergunta || q.enunciado || '',
+              options: optionsList,
+              correctAnswer: String(q.correct_answer || q.correctAnswer || q.gabarito || 'A').trim().toUpperCase(),
+              explanation: q.explanation || q.explicacao || q.comentario || ''
+            };
+          });
+
+          setAllQuestions(shuffleArray(formattedQuestions));
+        }
+      } catch (err) {
+        console.error('Erro ao processar questões do Supabase:', err);
+      } finally {
+        setLoadingQuestions(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  // BUSCA DE MATERIAIS (RESUMOS E MAPAS MENTAIS) NO SUPABASE
+  useEffect(() => {
+    async function fetchMaterials() {
+      try {
+        setLoadingMaterials(true);
+        const { data, error } = await supabase.from('materials').select('*');
+
+        if (error) {
+          console.error('Erro ao buscar materiais:', error);
+          return;
+        }
+
+        if (data) {
+          const formatted: Material[] = data.map((m: any) => ({
+            id: String(m.id),
+            title: m.title || '',
+            discipline: m.discipline || '',
+            type: m.type || 'resumo',
+            topic: m.topic || '',
+            content: m.content || ''
+          }));
+          setAllMaterials(formatted);
+        }
+      } catch (err) {
+        console.error('Erro ao processar materiais:', err);
+      } finally {
+        setLoadingMaterials(false);
+      }
+    }
+    fetchMaterials();
+  }, []);
+
+  // FILTRAGEM
+  useEffect(() => {
+    let result = allQuestions;
+
+    if (filterDiscipline !== 'Todas') {
+      result = result.filter(q => q.discipline === filterDiscipline);
+    }
+
+    if (filterTopic !== 'Todos') {
+      result = result.filter(q => q.topic === filterTopic);
+    }
+
+    setFilteredQuestions(result);
+    setCurrentIndex(0);
+    setSelectedOption(null);
+    setIsAnswered(false);
+  }, [filterDiscipline, filterTopic, allQuestions]);
+
+  const currentQuestion = filteredQuestions[currentIndex];
+
+  const materiaisFiltrados = allMaterials.filter(
+    (m) =>
+      m.discipline === selectedDiscipline &&
+      m.type === materialTab &&
+      (materialTopic === 'Todos' || m.topic === materialTopic)
+  );
+
+  const handleConfirmAnswer = () => {
+    if (!selectedOption || !currentQuestion) return;
+
+    setIsAnswered(true);
+    const acertou = selectedOption === currentQuestion.correctAnswer;
+
+    setStats((prev: any) => ({
+      totalRespondidas: prev.totalRespondidas + 1,
+      totalAcertos: acertou ? prev.totalAcertos + 1 : prev.totalAcertos
+    }));
+
+    if (acertou) {
+      setStreak((prev) => prev + 1);
+    } else {
+      setStreak(0);
+      setCadernoErros((errosAtuais) => {
+        const jaExiste = errosAtuais.some((q) => q.id === currentQuestion.id);
+        if (jaExiste) return errosAtuais;
+        return [...errosAtuais, currentQuestion];
+      });
+    }
+  };
+
+  const handleNextQuestion = () => {
+    setSelectedOption(null);
+    setIsAnswered(false);
+    if (currentIndex < filteredQuestions.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+    } else {
+      setFilteredQuestions(shuffleArray(filteredQuestions));
+      setCurrentIndex(0);
+    }
+  };
+
+  const handleRemoverDoCaderno = (id: string) => {
+    setCadernoErros((prev) => prev.filter((q) => q.id !== id));
+  };
+
+  const taxaAcerto = stats.totalRespondidas > 0 
+    ? Math.round((stats.totalAcertos / stats.totalRespondidas) * 100) 
+    : 0;
+
+  const totalErros = stats.totalRespondidas - stats.totalAcertos;
+  const taxaErro = stats.totalRespondidas > 0 
+    ? Math.round((totalErros / stats.totalRespondidas) * 100) 
+    : 0;
+
+  // LÓGICA DE PORCENTAGEM DE ERROS POR DISCIPLINA/ASSUNTO
+  const errosPorAssunto = React.useMemo(() => {
+    if (cadernoErros.length === 0) return {};
+    const contagem: Record<string, number> = {};
+    cadernoErros.forEach(q => {
+      const chave = `${q.discipline} — ${q.topic}`;
+      contagem[chave] = (contagem[chave] || 0) + 1;
+    });
+    return contagem;
+  }, [cadernoErros]);
+
+  // TELA DE LOGIN
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
+        <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
+          <div className="text-center space-y-1">
+            <h1 className="text-2xl font-black text-amber-500">APROVA 80</h1>
+            <p className="text-xs text-slate-400">Área Exclusiva de Alunos</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            {authError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl text-center font-medium">
+                {authError}
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-300">E-mail de Acesso</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-300">Senha</label>
+              <div className="relative">
+                <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
+            >
+              {authLoading ? 'Entrando...' : 'Acessar Plataforma'}
+            </button>
+          </form>
+
+          <p className="text-[11px] text-center text-slate-500">
+            Ainda não tem acesso? Adquira seu plano em nossa página oficial.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // TELA DE TROCA DE SENHA OBRIGATÓRIA (PRIMEIRO ACESSO)
+  const precisaTrocarSenha = session?.user?.user_metadata?.must_change_password === true;
+
+  if (precisaTrocarSenha) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
+        <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
+          <div className="text-center space-y-1">
+            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Lock className="w-5 h-5 text-amber-500" />
+            </div>
+            <h1 className="text-xl font-black text-amber-500">Crie sua senha definitiva</h1>
+            <p className="text-xs text-slate-400">Por segurança, defina uma nova senha para continuar.</p>
+          </div>
+
+          <form onSubmit={handleTrocarSenha} className="space-y-4">
+            {erroSenha && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl text-center font-medium">
+                {erroSenha}
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-300">Nova Senha</label>
+              <div className="relative">
+                <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <input
+                  type="password"
+                  required
+                  value={novaSenha}
+                  onChange={(e) => setNovaSenha(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-300">Confirmar Nova Senha</label>
+              <div className="relative">
+                <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <input
+                  type="password"
+                  required
+                  value={confirmaSenha}
+                  onChange={(e) => setConfirmaSenha(e.target.value)}
+                  placeholder="Repita a nova senha"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={trocandoSenha}
+              className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
+            >
+              {trocandoSenha ? 'Salvando...' : 'Definir Senha e Continuar'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // APLICATIVO PRINCIPAL
+  // Mobile (< md): layout de cartão único, centralizado, com header fixo em cima e navegação fixa embaixo (como antes).
+  // Desktop (>= md): layout ocupando a tela inteira, com menu lateral fixo à esquerda substituindo header + navegação inferior.
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col md:flex-row print:bg-white print:text-black">
+
+      {/* MENU LATERAL — SOMENTE DESKTOP */}
+      <aside className="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:h-screen md:sticky md:top-0 bg-slate-900 border-r border-slate-800 p-5 print:hidden">
+        <div className="mb-8">
+          <h1 className="text-xl font-bold tracking-wider text-amber-500">APROVA 80</h1>
+          <p className="text-xs text-slate-400">Preparatório de Elite</p>
+        </div>
+
+        <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-1 bg-amber-500/10 text-amber-500 px-3 py-1.5 rounded-full border border-amber-500/20 text-sm font-bold">
+            <Flame className="w-4 h-4 fill-amber-500" />
+            <span>{streak} dias</span>
+          </div>
+        </div>
+
+        <nav className="flex-1 flex flex-col gap-1">
+          {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer text-left ${
+                activeTab === id
+                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-transparent'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="pt-4 border-t border-slate-800 flex flex-col gap-2">
+          {isInstallable && (
+            <button 
+              onClick={handleInstallPWA}
+              className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-3 py-2 rounded-xl border border-emerald-500/30 text-xs font-bold hover:bg-emerald-500/30 transition cursor-pointer"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Instalar no dispositivo</span>
+            </button>
+          )}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-red-400 hover:bg-slate-800 transition cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sair da Conta</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* COLUNA PRINCIPAL */}
+      <div className="flex-1 w-full flex justify-center md:justify-start">
+        <div className="w-full max-w-xl md:max-w-none min-h-screen bg-slate-900 flex flex-col justify-between relative shadow-2xl border-x border-slate-800 md:border-none print:max-w-none print:border-none">
+
+          {/* CABEÇALHO — SOMENTE MOBILE */}
+          <header className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/90 backdrop-blur sticky top-0 z-20 print:hidden md:hidden">
+            <div>
+              <h1 className="text-xl font-bold tracking-wider text-amber-500">APROVA 80</h1>
+              <p className="text-xs text-slate-400">Preparatório de Elite</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isInstallable && (
+                <button 
+                  onClick={handleInstallPWA}
+                  className="flex items-center gap-1 bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/30 text-xs font-bold hover:bg-emerald-500/30 transition"
+                  title="Instalar no Celular"
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>Instalar</span>
+                </button>
+              )}
+              <div className="flex items-center gap-1 bg-amber-500/10 text-amber-500 px-3 py-1 rounded-full border border-amber-500/20 text-sm font-bold">
+                <Flame className="w-4 h-4 fill-amber-500" />
+                <span>{streak}</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 text-slate-400 hover:text-red-400 transition"
+                title="Sair da Conta"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </header>
+
+          {/* CABEÇALHO DE CONTEXTO — SOMENTE DESKTOP (mostra em qual aba você está) */}
+          <div className="hidden md:flex items-center justify-between px-8 py-5 border-b border-slate-800 print:hidden">
+            <h2 className="text-lg font-bold text-slate-200">
+              {NAV_ITEMS.find(n => n.id === activeTab)?.label}
+            </h2>
+            <div className="flex items-center gap-1 bg-amber-500/10 text-amber-500 px-3 py-1 rounded-full border border-amber-500/20 text-sm font-bold">
+              <Flame className="w-4 h-4 fill-amber-500" />
+              <span>{streak} de sequência</span>
+            </div>
+          </div>
+
+          {/* CONTEÚDO PRINCIPAL */}
+          <main className="p-4 md:p-8 flex-1 pb-28 md:pb-8 print:p-0 print:pb-0">
+            <div className="md:max-w-4xl md:mx-auto">
+
+            {/* HOME */}
+            {activeTab === 'home' && (
+              <div className="space-y-6">
+                <div className="p-6 md:p-8 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl text-slate-950 font-bold space-y-2 shadow-lg">
+                  <span className="text-xs uppercase tracking-wider bg-slate-950/20 px-2 py-0.5 rounded text-slate-950">
+                    Meta Diária
+                  </span>
+                  <h2 className="text-2xl md:text-3xl font-black">Foco na Aprovação!</h2>
+                  <p className="text-sm opacity-90 font-medium">
+                    {loadingQuestions ? 'Carregando questões do banco...' : `Você tem ${allQuestions.length} questões prontas para treino.`}
+                  </p>
+                  <button 
+                    onClick={() => setActiveTab('simulado')}
+                    className="mt-4 w-full md:w-auto md:px-8 py-3 bg-slate-950 text-amber-500 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-900 transition cursor-pointer"
+                  >
+                    <Zap className="w-5 h-5 fill-amber-500" />
+                    Começar Simulado
+                  </button>
+                </div>
+
+                <div className="p-4 bg-slate-800 border border-slate-700/50 rounded-xl flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium">Taxa de Acertos</p>
+                    <p className="text-2xl font-black text-emerald-400">{taxaAcerto}%</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400 font-medium">Respondidas</p>
+                    <p className="text-lg font-bold text-slate-200">{stats.totalRespondidas} qst</p>
+                  </div>
+                </div>
+
+                {/* ATALHOS DA HOME */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div 
+                    onClick={() => setActiveTab('materiais')}
+                    className="p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-amber-500/50 transition"
+                  >
+                    <BookOpen className="w-6 h-6 text-amber-400 mb-2" />
+                    <h3 className="font-bold text-sm">Materiais</h3>
+                    <p className="text-xs text-slate-400">{LISTA_DISCIPLINAS.length} Matérias</p>
+                  </div>
+
+                  <div 
+                    onClick={() => setActiveTab('caderno')}
+                    className="p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-amber-500/50 transition"
+                  >
+                    <AlertTriangle className="w-6 h-6 text-red-400 mb-2" />
+                    <h3 className="font-bold text-sm">Caderno de Erros</h3>
+                    <p className="text-xs text-slate-400">{cadernoErros.length} salvas</p>
+                  </div>
+
+                  <div 
+                    onClick={() => setActiveTab('anotacoes')}
+                    className="p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-amber-500/50 transition"
+                  >
+                    <PenLine className="w-6 h-6 text-sky-400 mb-2" />
+                    <h3 className="font-bold text-sm">Anotações</h3>
+                    <p className="text-xs text-slate-400">Suas notas pessoais</p>
+                  </div>
+
+                  <div 
+                    onClick={() => setActiveTab('stats')}
+                    className="hidden md:block p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-amber-500/50 transition"
+                  >
+                    <PieChart className="w-6 h-6 text-emerald-400 mb-2" />
+                    <h3 className="font-bold text-sm">Desempenho</h3>
+                    <p className="text-xs text-slate-400">Ver estatísticas</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SIMULADO */}
+            {activeTab === 'simulado' && (
+              <div className="space-y-4">
+                
+                {/* PAINEL DE FILTROS */}
+                <div className="p-3 bg-slate-800/80 border border-slate-700/60 rounded-xl space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
+                    <Filter className="w-3.5 h-3.5" />
+                    <span>Filtrar Treino:</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={filterDiscipline}
+                      onChange={(e) => {
+                        setFilterDiscipline(e.target.value);
+                        setFilterTopic('Todos');
+                      }}
+                      className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:border-amber-500 outline-none"
+                    >
+                      <option value="Todas">Toda Disciplina</option>
+                      {LISTA_DISCIPLINAS.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={filterTopic}
+                      onChange={(e) => setFilterTopic(e.target.value)}
+                      className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:border-amber-500 outline-none"
+                    >
+                      {(ESTRUTURA_MATERIAS[filterDiscipline] || ['Todos']).map(t => (
+                        <option key={t} value={t}>{t === 'Todos' ? 'Todo Assunto' : t}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {loadingQuestions ? (
+                  <div className="text-center py-12 text-slate-400 text-sm">
+                    Carregando questões do Supabase...
+                  </div>
+                ) : filteredQuestions.length === 0 ? (
+                  <div className="text-center py-12 space-y-2 bg-slate-800/30 rounded-2xl border border-slate-800 p-6">
+                    <p className="text-sm font-semibold text-slate-300">Nenhuma questão encontrada!</p>
+                    <p className="text-xs text-slate-500">
+                      {allQuestions.length === 0 
+                        ? "Verifique se você salvou a política (RLS) no Supabase."
+                        : "Tente alterar os filtros de disciplina ou assunto acima."}
+                    </p>
+                  </div>
+                ) : currentQuestion && (
+                  <>
+                    <div className="flex justify-between items-center text-xs text-slate-400">
+                      <div className="flex gap-1.5 items-center">
+                        <span className="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-amber-500 font-semibold">
+                          {currentQuestion.discipline}
+                        </span>
+                        <span className="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-400">
+                          {currentQuestion.topic}
+                        </span>
+                      </div>
+                      <span>Questão {currentIndex + 1} de {filteredQuestions.length}</span>
+                    </div>
+
+                    <p className="text-sm md:text-base font-medium leading-relaxed text-slate-200 bg-slate-800/50 p-4 md:p-6 rounded-xl border border-slate-800">
+                      {currentQuestion.statement}
+                    </p>
+
+                    <div className="space-y-2">
+                      {currentQuestion.options.map((option) => {
+                        const isSelected = selectedOption === option.letter;
+                        const isCorrect = option.letter === currentQuestion.correctAnswer;
+                        
+                        let btnStyle = "bg-slate-800 border-slate-700 hover:border-slate-600";
+                        
+                        if (isAnswered) {
+                          if (isCorrect) btnStyle = "bg-emerald-500/20 border-emerald-500 text-emerald-300";
+                          else if (isSelected) btnStyle = "bg-red-500/20 border-red-500 text-red-300";
+                        } else if (isSelected) {
+                          btnStyle = "bg-amber-500/20 border-amber-500 text-amber-300";
+                        }
+
+                        return (
+                          <button
+                            key={option.letter}
+                            disabled={isAnswered}
+                            onClick={() => setSelectedOption(option.letter)}
+                            className={`w-full p-3 rounded-xl border text-left text-sm flex items-start gap-3 transition ${btnStyle}`}
+                          >
+                            <span className="font-bold text-xs bg-slate-700/50 px-2 py-1 rounded">
+                              {option.letter}
+                            </span>
+                            <span className="flex-1">{option.text}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {!isAnswered ? (
+                      <button
+                        disabled={!selectedOption}
+                        onClick={handleConfirmAnswer}
+                        className="w-full md:w-auto md:px-10 py-3 bg-amber-500 text-slate-950 font-bold rounded-xl disabled:opacity-50 transition cursor-pointer"
+                      >
+                        Responder
+                      </button>
+                    ) : (
+                      <div className="space-y-3">
+                        {currentQuestion.explanation && (
+                          <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs text-slate-300 space-y-1">
+                            <span className="font-bold text-amber-500 flex items-center gap-1">
+                              <FileText className="w-3.5 h-3.5" /> Comentário:
+                            </span>
+                            <p>{currentQuestion.explanation}</p>
+                          </div>
+                        )}
+                        <button
+                          onClick={handleNextQuestion}
+                          className="w-full md:w-auto md:px-10 py-3 bg-slate-800 border border-slate-700 text-amber-500 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-700 transition cursor-pointer"
+                        >
+                          Próxima Questão
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* MATERIAIS */}
+            {activeTab === 'materiais' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-bold flex items-center gap-2 text-amber-500 md:hidden">
+                    <BookOpen className="w-5 h-5" /> Materiais de Estudo
+                  </h2>
+                  <div className="hidden md:block" />
+                  <button
+                    onClick={handlePrintPDF}
+                    className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Baixar PDF</span>
+                  </button>
+                </div>
+
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none md:flex-wrap">
+                  {LISTA_DISCIPLINAS.map((disc) => (
+                    <button
+                      key={disc}
+                      onClick={() => {
+                        setSelectedDiscipline(disc);
+                        setMaterialTopic('Todos');
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                        selectedDiscipline === disc
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {disc}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 bg-slate-800 p-1 rounded-xl gap-1 md:max-w-sm">
+                  <button
+                    onClick={() => setMaterialTab('resumo')}
+                    className={`py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
+                      materialTab === 'resumo' ? 'bg-slate-700 text-amber-500' : 'text-slate-400'
+                    }`}
+                  >
+                    📄 Resumo
+                  </button>
+                  <button
+                    onClick={() => setMaterialTab('mapa_mental')}
+                    className={`py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
+                      materialTab === 'mapa_mental' ? 'bg-slate-700 text-amber-500' : 'text-slate-400'
+                    }`}
+                  >
+                    🧠 Mapa Mental
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
+                  <Filter className="w-3.5 h-3.5" />
+                  <span>Filtrar por Assunto:</span>
+                </div>
+                <select
+                  value={materialTopic}
+                  onChange={(e) => setMaterialTopic(e.target.value)}
+                  className="w-full md:max-w-sm bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-2.5 focus:border-amber-500 outline-none"
+                >
+                  {(ESTRUTURA_MATERIAS[selectedDiscipline] || ['Todos']).map((t) => (
+                    <option key={t} value={t}>{t === 'Todos' ? 'Todos os Assuntos' : t}</option>
+                  ))}
+                </select>
+
+                {loadingMaterials ? (
+                  <div className="text-center py-12 text-slate-400 text-sm">
+                    Carregando materiais...
+                  </div>
+                ) : materiaisFiltrados.length === 0 ? (
+                  <div className="text-center py-12 space-y-2 bg-slate-800/30 rounded-2xl border border-slate-800 p-6">
+                    <p className="text-sm font-semibold text-slate-300">Nenhum material disponível ainda</p>
+                    <p className="text-xs text-slate-500">
+                      {materialTab === 'resumo' ? 'Resumo' : 'Mapa mental'} de {selectedDiscipline} em breve.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {materiaisFiltrados.map((m) => (
+                      <div key={m.id} className="p-4 md:p-6 bg-slate-800 border border-slate-700/60 rounded-xl">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <h3 className="font-bold text-sm text-amber-500">{m.title}</h3>
+                          {m.topic && (
+                            <span className="text-[10px] bg-slate-900 border border-slate-700 text-slate-400 px-2 py-0.5 rounded-full">
+                              {m.topic}
+                            </span>
+                          )}
+                        </div>
+                        <div>{renderContent(m.content)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ANOTAÇÕES PESSOAIS */}
+            {activeTab === 'anotacoes' && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-bold flex items-center gap-2 text-sky-400 md:hidden">
+                  <PenLine className="w-5 h-5" /> Minhas Anotações
+                </h2>
+
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none md:flex-wrap">
+                  {LISTA_DISCIPLINAS.map((disc) => (
+                    <button
+                      key={disc}
+                      onClick={() => setNotesDiscipline(disc)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                        notesDiscipline === disc
+                          ? 'bg-sky-500 text-slate-950'
+                          : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {disc}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="bg-slate-800 border border-slate-700/60 rounded-xl p-4 md:p-6 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-sm text-sky-400">{notesDiscipline}</h3>
+                    <span className="text-[10px] text-slate-500">Salvo automaticamente neste dispositivo</span>
+                  </div>
+                  <textarea
+                    value={notes[notesDiscipline] || ''}
+                    onChange={(e) => setNotes((prev) => ({ ...prev, [notesDiscipline]: e.target.value }))}
+                    placeholder={`Escreva aqui suas anotações sobre ${notesDiscipline}...`}
+                    rows={14}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 outline-none focus:border-sky-500 resize-y leading-relaxed"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* CADERNO DE ERROS (SEPARADO POR ASSUNTOS E PORCENTAGEM) */}
+            {activeTab === 'caderno' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-bold flex items-center gap-2 text-red-400 md:hidden">
+                    <AlertTriangle className="w-5 h-5" /> Caderno de Erros
+                  </h2>
+                  <div className="hidden md:block" />
+                  {cadernoErros.length > 0 && (
+                    <button
+                      onClick={handlePrintPDF}
+                      className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-amber-500 border border-amber-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Imprimir / PDF</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* PAINEL DE ESTATÍSTICA DE ERROS POR ASSUNTO */}
+                {cadernoErros.length > 0 && (
+                  <div className="p-4 bg-slate-800/90 border border-slate-700 rounded-xl space-y-3">
+                    <h3 className="text-xs font-bold text-amber-500 uppercase tracking-wide flex items-center gap-1.5">
+                      <PieChart className="w-4 h-4" /> Distribuição de Dificuldade por Assunto
+                    </h3>
+                    <div className="space-y-2 md:grid md:grid-cols-2 md:gap-x-6 md:space-y-0">
+                      {Object.entries(errosPorAssunto).map(([assunto, qtd]) => {
+                        const porcentagem = ((qtd / cadernoErros.length) * 100).toFixed(1);
+                        return (
+                          <div key={assunto} className="space-y-1 py-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-slate-300 font-medium truncate max-w-[70%]">{assunto}</span>
+                              <span className="text-red-400 font-bold">{qtd} erro(s) ({porcentagem}%)</span>
+                            </div>
+                            <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-700">
+                              <div 
+                                className="bg-red-500 h-full transition-all duration-500" 
+                                style={{ width: `${porcentagem}%` }} 
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {cadernoErros.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-8">
+                    Nenhum erro registrado ainda! Continue treinando.
+                  </p>
+                ) : (
+                  <div className="md:grid md:grid-cols-2 md:gap-4 md:space-y-0 space-y-4">
+                  {cadernoErros.map((q) => (
+                    <div key={q.id} className="p-4 bg-slate-800 border border-slate-700/60 rounded-xl space-y-3">
+                      
+                      {/* Cabeçalho da Questão no Caderno */}
+                      <div className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-500 font-semibold">{q.discipline}</span>
+                          <span className="text-slate-500">•</span>
+                          <span className="text-slate-400 text-[11px]">{q.topic}</span>
+                        </div>
+                        <button 
+                          onClick={() => handleRemoverDoCaderno(q.id)}
+                          className="text-slate-500 hover:text-red-400 transition print:hidden cursor-pointer"
+                          title="Remover do Caderno"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Enunciado */}
+                      <p className="text-xs font-medium text-slate-200 leading-relaxed bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+                        {q.statement}
+                      </p>
+
+                      {/* Gabarito Correto */}
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <span className="text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
+                          Gabarito Correto: Alternativa {q.correctAnswer}
+                        </span>
+                      </div>
+
+                      {/* Comentário / Explicação */}
+                      {q.explanation ? (
+                        <div className="p-3 bg-slate-900/80 rounded-lg border border-slate-700/60 text-xs text-slate-300 space-y-1">
+                          <span className="font-bold text-amber-500 flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5" /> Comentário do Gabarito:
+                          </span>
+                          <p className="leading-relaxed text-slate-300">{q.explanation}</p>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] italic text-slate-500">
+                          Esta questão não possui comentário cadastrado no banco.
+                        </p>
+                      )}
+
+                    </div>
+                  ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DESEMPENHO E ESTATÍSTICAS */}
+            {activeTab === 'stats' && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-bold flex items-center gap-2 text-amber-500 md:hidden">
+                  <PieChart className="w-5 h-5" /> Desempenho Geral
+                </h2>
+
+                <div className="grid grid-cols-2 gap-3 md:gap-4">
+                  <div className="p-4 md:p-6 bg-slate-800 border border-emerald-500/30 rounded-xl">
+                    <p className="text-xs text-slate-400 font-medium">Taxa de Acerto</p>
+                    <p className="text-2xl md:text-3xl font-black text-emerald-400">{taxaAcerto}%</p>
+                    <p className="text-[10px] text-slate-500 mt-1">{stats.totalAcertos} acertos</p>
+                  </div>
+
+                  <div className="p-4 md:p-6 bg-slate-800 border border-red-500/30 rounded-xl">
+                    <p className="text-xs text-slate-400 font-medium">Taxa de Erro</p>
+                    <p className="text-2xl md:text-3xl font-black text-red-400">{taxaErro}%</p>
+                    <p className="text-[10px] text-slate-500 mt-1">{totalErros} erros</p>
+                  </div>
+                </div>
+
+                <div className="p-4 md:p-6 bg-slate-800 border border-slate-700/60 rounded-xl space-y-3">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400 font-medium">Total de Questões Respondidas</span>
+                    <span className="font-bold text-slate-200">{stats.totalRespondidas}</span>
+                  </div>
+                  
+                  <div className="w-full bg-slate-900 h-3 rounded-full overflow-hidden flex border border-slate-700">
+                    <div 
+                      className="bg-emerald-500 h-full transition-all duration-500" 
+                      style={{ width: `${taxaAcerto}%` }} 
+                    />
+                    <div 
+                      className="bg-red-500 h-full transition-all duration-500" 
+                      style={{ width: `${taxaErro}%` }} 
+                    />
+                  </div>
+
+                  <div className="flex justify-between text-[11px] pt-1">
+                    <span className="text-emerald-400 font-semibold">● Acertos: {stats.totalAcertos}</span>
+                    <span className="text-red-400 font-semibold">● Erros: {totalErros}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            </div>
+          </main>
+
+          {/* BARRA DE NAVEGAÇÃO INFERIOR — SOMENTE MOBILE */}
+          <nav className="md:hidden absolute bottom-0 left-0 right-0 max-w-xl mx-auto bg-slate-900/95 border-t border-slate-800 backdrop-blur p-2 flex justify-around items-center z-10 print:hidden overflow-x-auto">
+            {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex flex-col items-center gap-1 text-[10px] font-bold transition cursor-pointer shrink-0 px-1 ${
+                  activeTab === id ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{label}</span>
+              </button>
+            ))}
+          </nav>
+
+        </div>
+      </div>
+    </div>
+  );
+}
