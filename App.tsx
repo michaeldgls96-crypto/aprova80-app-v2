@@ -38,7 +38,7 @@ const ESTRUTURA_MATERIAS: Record<string, string[]> = {
   'Língua Portuguesa': ['Todos', 'Compreensão e Interpretação de Textos', 'Acentuação Gráfica', 'Ortografia Oficial', 'Crase', 'Crase e Regência', 'Concordância Verbal'],
   'Raciocínio Lógico': ['Todos', 'Lógica de Proposições', 'Equivalências Lógicas'],
   'Informática': ['Todos', 'Segurança da Informação', 'Malwares', 'Backup', 'Hardware - Armazenamento', 'Correio Eletrônico', 'Criptografia'],
-  'Direito Penal': ['Todos', 'Excludentes de Ilicitude', 'Crimes Contra a Pessoa'],
+  'Direito Penal': ['Todos', 'Excludentes de Ilicitude', 'Crimes Contra a Pessoa', 'Crimes Contra o Patrimônio', 'Crimes Contra a Administração Pública', 'Teoria do Crime'],
   'Processo Penal': ['Todos', 'Inquérito Policial', 'Prisão e Liberdade'],
   'Direito Constitucional': ['Todos', 'Remédios Constitucionais', 'Direitos e Garantias Fundamentais'],
   'Direito Administrativo': ['Todos', 'Atos Administrativos', 'Organização Administrativa'],
@@ -290,11 +290,28 @@ export default function App() {
     async function fetchData() {
       try {
         setLoadingQuestions(true);
-        const { data: qData, error } = await supabase.from('questions').select('*');
-        
-        if (error) {
-          console.error('Erro na requisição ao Supabase:', error);
-          return;
+
+        // Busca em páginas de 1000 em 1000, pois o Supabase limita cada
+        // consulta a 1000 linhas por padrão — sem isso, questões além
+        // das primeiras 1000 cadastradas nunca apareceriam no app.
+        let qData: any[] = [];
+        let from = 0;
+        const pageSize = 1000;
+        while (true) {
+          const { data: pageData, error } = await supabase
+            .from('questions')
+            .select('*')
+            .range(from, from + pageSize - 1);
+
+          if (error) {
+            console.error('Erro na requisição ao Supabase:', error);
+            break;
+          }
+          if (!pageData || pageData.length === 0) break;
+
+          qData = qData.concat(pageData);
+          if (pageData.length < pageSize) break;
+          from += pageSize;
         }
 
         if (qData && qData.length > 0) {
