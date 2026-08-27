@@ -30,6 +30,7 @@ interface Material {
   type: string; // 'resumo' | 'mapa_mental'
   topic: string;
   content: string;
+  url: string;
 }
 
 // ESTRUTURA DE MATÉRIAS E SEUS TÓPICOS
@@ -38,7 +39,7 @@ const ESTRUTURA_MATERIAS: Record<string, string[]> = {
   'Língua Portuguesa': ['Todos', 'Compreensão e Interpretação de Textos', 'Acentuação Gráfica', 'Ortografia Oficial', 'Crase', 'Crase e Regência', 'Concordância Verbal', 'Concordância Nominal', 'Regência Verbal e Nominal', 'Colocação Pronominal', 'Pontuação', 'Sintaxe do Período', 'Classes de Palavras'],
   'Raciocínio Lógico': ['Todos', 'Lógica de Proposições', 'Equivalências Lógicas', 'Estruturas Lógicas e Diagramas', 'Análise Combinatória', 'Probabilidade', 'Sequências e Padrões Numéricos'],
   'Informática': ['Todos', 'Segurança da Informação', 'Malwares', 'Backup', 'Hardware - Armazenamento', 'Correio Eletrônico', 'Criptografia', 'Sistemas Operacionais', 'Redes de Computadores e Internet', 'Pacote Office', 'Computação em Nuvem'],
-  'Direito Penal': ['Todos', 'Excludentes de Ilicitude', 'Crimes Contra a Pessoa', 'Crimes Contra o Patrimônio', 'Crimes Contra a Administração Pública', 'Teoria do Crime', 'Concurso de Pessoas', 'Aplicação da Pena', 'Crimes Contra a Dignidade Sexual', 'Crimes Contra a Fé Pública', 'Extinção da Punibilidade', 'Crimes Contra a Incolumidade Pública'],
+  'Direito Penal': ['Todos', 'Excludentes de Ilicitude', 'Crimes Contra a Pessoa', 'Crimes Contra o Patrimônio', 'Crimes Contra a Administração Pública', 'Teoria do Crime', 'Concurso de Pessoas', 'Aplicação da Pena', 'Crimes Contra a Dignidade Sexual', 'Crimes Contra a Fé Pública', 'Extinção da Punibilidade', 'Crimes Contra a Incolumidade Pública', 'Feminicídio (Lei 14.994/2024)'],
   'Processo Penal': ['Todos', 'Inquérito Policial', 'Prisão e Liberdade', 'Ação Penal', 'Sistema de Provas', 'Nulidades Processuais', 'Recursos'],
   'Direito Constitucional': ['Todos', 'Remédios Constitucionais', 'Direitos e Garantias Fundamentais', 'Princípios Fundamentais', 'Organização do Estado', 'Poderes Executivo, Legislativo e Judiciário', 'Controle de Constitucionalidade'],
   'Direito Administrativo': ['Todos', 'Atos Administrativos', 'Organização Administrativa', 'Princípios da Administração Pública', 'Poderes Administrativos', 'Licitações e Contratos', 'Responsabilidade Civil do Estado', 'Agentes Públicos'],
@@ -156,6 +157,12 @@ export default function App() {
   const [filteredQuestions, setFilteredQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+
+  // REPORTAR ERRO EM QUESTÃO
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportText, setReportText] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
   const [isAnswered, setIsAnswered] = useState(false);
   const [streak, setStreak] = useState(0);
   const [loadingQuestions, setLoadingQuestions] = useState(true);
@@ -379,7 +386,8 @@ export default function App() {
             discipline: m.discipline || '',
             type: m.type || 'resumo',
             topic: m.topic || '',
-            content: m.content || ''
+            content: m.content || '',
+            url: m.url || ''
           }));
           setAllMaterials(formatted);
         }
@@ -439,6 +447,35 @@ export default function App() {
         if (jaExiste) return errosAtuais;
         return [...errosAtuais, currentQuestion];
       });
+    }
+  };
+
+  const handleSubmitReport = async () => {
+    if (!currentQuestion || !reportText.trim()) return;
+
+    setReportSubmitting(true);
+    try {
+      const { error } = await supabase.from('question_reports').insert({
+        question_id: currentQuestion.id,
+        question_statement: currentQuestion.statement,
+        user_email: session?.user?.email || null,
+        description: reportText.trim(),
+      });
+
+      if (error) {
+        console.error('Erro ao enviar report:', error);
+      } else {
+        setReportSuccess(true);
+        setReportText('');
+        setTimeout(() => {
+          setReportModalOpen(false);
+          setReportSuccess(false);
+        }, 1800);
+      }
+    } catch (err) {
+      console.error('Erro ao enviar report:', err);
+    } finally {
+      setReportSubmitting(false);
     }
   };
 
@@ -902,6 +939,12 @@ export default function App() {
                           </div>
                         )}
                         <button
+                          onClick={() => setReportModalOpen(true)}
+                          className="w-full text-center text-[11px] text-slate-500 hover:text-red-400 transition cursor-pointer underline underline-offset-2"
+                        >
+                          Encontrou um erro nessa questão? Reportar
+                        </button>
+                        <button
                           onClick={handleNextQuestion}
                           className="w-full md:w-auto md:px-10 py-3 bg-slate-800 border border-slate-700 text-amber-500 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-700 transition cursor-pointer"
                         >
@@ -912,6 +955,54 @@ export default function App() {
                     )}
                   </>
                 )}
+              </div>
+            )}
+
+            {/* MODAL DE REPORTAR ERRO */}
+            {reportModalOpen && (
+              <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => !reportSubmitting && setReportModalOpen(false)}>
+                <div
+                  className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm space-y-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {reportSuccess ? (
+                    <div className="text-center py-4 space-y-2">
+                      <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto" />
+                      <p className="text-sm font-bold text-slate-200">Report enviado!</p>
+                      <p className="text-xs text-slate-400">Obrigado por ajudar a melhorar o conteúdo.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <h3 className="font-bold text-sm text-amber-500">Reportar erro na questão</h3>
+                        <p className="text-xs text-slate-400 mt-1">Descreva o que está errado (gabarito incorreto, enunciado confuso, etc.)</p>
+                      </div>
+                      <textarea
+                        value={reportText}
+                        onChange={(e) => setReportText(e.target.value)}
+                        placeholder="Ex: O gabarito está marcado como C, mas a resposta correta é B..."
+                        rows={4}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 outline-none focus:border-amber-500 resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setReportModalOpen(false)}
+                          disabled={reportSubmitting}
+                          className="flex-1 py-2.5 border border-slate-700 text-slate-400 rounded-xl text-xs font-bold hover:bg-slate-700 transition cursor-pointer disabled:opacity-50"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={handleSubmitReport}
+                          disabled={reportSubmitting || !reportText.trim()}
+                          className="flex-1 py-2.5 bg-amber-500 text-slate-950 rounded-xl text-xs font-bold hover:bg-amber-400 transition cursor-pointer disabled:opacity-50"
+                        >
+                          {reportSubmitting ? 'Enviando...' : 'Enviar Report'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1007,7 +1098,16 @@ export default function App() {
                             </span>
                           )}
                         </div>
-                        <div>{renderContent(m.content)}</div>
+                        {m.type === 'mapa_mental' && m.url ? (
+                          <img
+                            src={m.url}
+                            alt={m.title}
+                            className="w-full h-auto rounded-lg border border-slate-700"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div>{renderContent(m.content)}</div>
+                        )}
                       </div>
                     ))}
                   </div>
