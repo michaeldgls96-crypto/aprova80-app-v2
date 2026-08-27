@@ -4,7 +4,7 @@ import {
   Flame, CheckCircle, Zap, ShieldCheck, Home, 
   AlertTriangle, ChevronRight, FileText, BookOpen, 
   X, Download, PieChart, Layers, Filter, Printer, 
-  Smartphone, Mail, KeyRound, LogOut, Lock, PenLine
+  Smartphone, Mail, KeyRound, LogOut, Lock, PenLine, MessageCircle, Send
 } from 'lucide-react';
 
 // INTERFACES
@@ -21,6 +21,14 @@ interface Question {
   options: Option[];
   correctAnswer: string;
   explanation?: string;
+}
+
+interface QuestionComment {
+  id: string;
+  question_id: string;
+  user_email: string;
+  comment_text: string;
+  created_at: string;
 }
 
 interface Material {
@@ -163,6 +171,13 @@ export default function App() {
   const [reportText, setReportText] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
+
+  // COMENTÁRIOS DOS ALUNOS
+  const [commentsPanelOpen, setCommentsPanelOpen] = useState(false);
+  const [comments, setComments] = useState<QuestionComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [isAnswered, setIsAnswered] = useState(false);
   const [streak, setStreak] = useState(0);
   const [loadingQuestions, setLoadingQuestions] = useState(true);
@@ -479,9 +494,63 @@ export default function App() {
     }
   };
 
+  const handleOpenComments = async () => {
+    if (!currentQuestion) return;
+    setCommentsPanelOpen(true);
+    setCommentsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('question_comments')
+        .select('*')
+        .eq('question_id', currentQuestion.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar comentários:', error);
+      } else if (data) {
+        setComments(data as QuestionComment[]);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar comentários:', err);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    if (!currentQuestion || !newComment.trim()) return;
+
+    setCommentSubmitting(true);
+    try {
+      const { data, error } = await supabase
+        .from('question_comments')
+        .insert({
+          question_id: currentQuestion.id,
+          user_email: session?.user?.email || 'Anônimo',
+          comment_text: newComment.trim(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao enviar comentário:', error);
+      } else if (data) {
+        setComments((prev) => [data as QuestionComment, ...prev]);
+        setNewComment('');
+      }
+    } catch (err) {
+      console.error('Erro ao enviar comentário:', err);
+    } finally {
+      setCommentSubmitting(false);
+    }
+  };
+
   const handleNextQuestion = () => {
     setSelectedOption(null);
     setIsAnswered(false);
+    setCommentsPanelOpen(false);
+    setComments([]);
+    setNewComment('');
     if (currentIndex < filteredQuestions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
@@ -938,12 +1007,21 @@ export default function App() {
                             <p>{currentQuestion.explanation}</p>
                           </div>
                         )}
-                        <button
-                          onClick={() => setReportModalOpen(true)}
-                          className="w-full text-center text-[11px] text-slate-500 hover:text-red-400 transition cursor-pointer underline underline-offset-2"
-                        >
-                          Encontrou um erro nessa questão? Reportar
-                        </button>
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            onClick={handleOpenComments}
+                            className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-amber-500 transition cursor-pointer"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            Comentários dos alunos
+                          </button>
+                          <button
+                            onClick={() => setReportModalOpen(true)}
+                            className="text-[11px] text-slate-500 hover:text-red-400 transition cursor-pointer underline underline-offset-2"
+                          >
+                            Reportar erro
+                          </button>
+                        </div>
                         <button
                           onClick={handleNextQuestion}
                           className="w-full md:w-auto md:px-10 py-3 bg-slate-800 border border-slate-700 text-amber-500 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-700 transition cursor-pointer"
@@ -955,6 +1033,76 @@ export default function App() {
                     )}
                   </>
                 )}
+              </div>
+            )}
+
+            {/* PAINEL DE COMENTÁRIOS DOS ALUNOS */}
+            {commentsPanelOpen && (
+              <div
+                className="fixed inset-0 bg-black/70 z-50 flex items-end md:items-center justify-center md:p-4"
+                onClick={() => setCommentsPanelOpen(false)}
+              >
+                <div
+                  className="bg-slate-800 border border-slate-700 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg h-[85vh] md:h-[600px] flex flex-col"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Cabeçalho do painel */}
+                  <div className="flex items-center justify-between p-4 border-b border-slate-700 shrink-0">
+                    <h3 className="font-bold text-sm text-amber-500 flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4" />
+                      Comentários dos alunos
+                    </h3>
+                    <button
+                      onClick={() => setCommentsPanelOpen(false)}
+                      className="text-slate-400 hover:text-slate-200 transition cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Lista de comentários */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {commentsLoading ? (
+                      <p className="text-xs text-slate-500 text-center py-8">Carregando comentários...</p>
+                    ) : comments.length === 0 ? (
+                      <p className="text-xs text-slate-500 text-center py-8">
+                        Nenhum comentário ainda. Seja o primeiro a comentar essa questão!
+                      </p>
+                    ) : (
+                      comments.map((c) => (
+                        <div key={c.id} className="bg-slate-900/60 border border-slate-700/60 rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] font-bold text-amber-500">
+                              {c.user_email?.split('@')[0] || 'Anônimo'}
+                            </span>
+                            <span className="text-[10px] text-slate-500">
+                              {new Date(c.created_at).toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-300 leading-relaxed">{c.comment_text}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Campo de novo comentário */}
+                  <div className="p-4 border-t border-slate-700 shrink-0 flex items-end gap-2">
+                    <textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Escreva um comentário sobre essa questão..."
+                      rows={2}
+                      className="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-amber-500 resize-none"
+                    />
+                    <button
+                      onClick={handleSubmitComment}
+                      disabled={commentSubmitting || !newComment.trim()}
+                      className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 p-2.5 rounded-xl transition cursor-pointer shrink-0"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
