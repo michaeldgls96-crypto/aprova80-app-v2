@@ -35,15 +35,15 @@ interface Material {
 // ESTRUTURA DE MATÉRIAS E SEUS TÓPICOS
 const ESTRUTURA_MATERIAS: Record<string, string[]> = {
   'Todas': ['Todos'],
-  'Língua Portuguesa': ['Todos', 'Compreensão e Interpretação de Textos', 'Acentuação Gráfica', 'Ortografia Oficial', 'Crase', 'Crase e Regência', 'Concordância Verbal'],
-  'Raciocínio Lógico': ['Todos', 'Lógica de Proposições', 'Equivalências Lógicas'],
-  'Informática': ['Todos', 'Segurança da Informação', 'Malwares', 'Backup', 'Hardware - Armazenamento', 'Correio Eletrônico', 'Criptografia'],
-  'Direito Penal': ['Todos', 'Excludentes de Ilicitude', 'Crimes Contra a Pessoa', 'Crimes Contra o Patrimônio', 'Crimes Contra a Administração Pública', 'Teoria do Crime'],
-  'Processo Penal': ['Todos', 'Inquérito Policial', 'Prisão e Liberdade'],
-  'Direito Constitucional': ['Todos', 'Remédios Constitucionais', 'Direitos e Garantias Fundamentais'],
-  'Direito Administrativo': ['Todos', 'Atos Administrativos', 'Organização Administrativa'],
-  'Legislação Extravagante': ['Todos', 'Lei de Abuso de Autoridade', 'Lei de Drogas'],
-  'Direitos Humanos': ['Todos', 'Declaração Universal dos Direitos Humanos']
+  'Língua Portuguesa': ['Todos', 'Compreensão e Interpretação de Textos', 'Acentuação Gráfica', 'Ortografia Oficial', 'Crase', 'Crase e Regência', 'Concordância Verbal', 'Concordância Nominal', 'Regência Verbal e Nominal', 'Colocação Pronominal', 'Pontuação', 'Sintaxe do Período', 'Classes de Palavras'],
+  'Raciocínio Lógico': ['Todos', 'Lógica de Proposições', 'Equivalências Lógicas', 'Estruturas Lógicas e Diagramas', 'Análise Combinatória', 'Probabilidade', 'Sequências e Padrões Numéricos'],
+  'Informática': ['Todos', 'Segurança da Informação', 'Malwares', 'Backup', 'Hardware - Armazenamento', 'Correio Eletrônico', 'Criptografia', 'Sistemas Operacionais', 'Redes de Computadores e Internet', 'Pacote Office', 'Computação em Nuvem'],
+  'Direito Penal': ['Todos', 'Excludentes de Ilicitude', 'Crimes Contra a Pessoa', 'Crimes Contra o Patrimônio', 'Crimes Contra a Administração Pública', 'Teoria do Crime', 'Concurso de Pessoas', 'Aplicação da Pena', 'Crimes Contra a Dignidade Sexual', 'Crimes Contra a Fé Pública', 'Extinção da Punibilidade', 'Crimes Contra a Incolumidade Pública'],
+  'Processo Penal': ['Todos', 'Inquérito Policial', 'Prisão e Liberdade', 'Ação Penal', 'Sistema de Provas', 'Nulidades Processuais', 'Recursos'],
+  'Direito Constitucional': ['Todos', 'Remédios Constitucionais', 'Direitos e Garantias Fundamentais', 'Princípios Fundamentais', 'Organização do Estado', 'Poderes Executivo, Legislativo e Judiciário', 'Controle de Constitucionalidade'],
+  'Direito Administrativo': ['Todos', 'Atos Administrativos', 'Organização Administrativa', 'Princípios da Administração Pública', 'Poderes Administrativos', 'Licitações e Contratos', 'Responsabilidade Civil do Estado', 'Agentes Públicos'],
+  'Legislação Extravagante': ['Todos', 'Lei de Abuso de Autoridade', 'Lei de Drogas', 'Lei Maria da Penha', 'ECA', 'Estatuto do Idoso', 'Estatuto do Desarmamento', 'Lei de Tortura', 'Crimes Hediondos', 'Racismo', 'LEP', 'CTB', 'Deficientes', 'Lei 9099'],
+  'Direitos Humanos': ['Todos', 'Declaração Universal dos Direitos Humanos', 'Convenção Americana de Direitos Humanos (Pacto de São José)', 'Convenção de Belém do Pará', 'Sistema Interamericano de Proteção']
 };
 
 const LISTA_DISCIPLINAS = Object.keys(ESTRUTURA_MATERIAS).filter(m => m !== 'Todas');
