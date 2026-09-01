@@ -288,12 +288,11 @@ export default function App() {
     }
 
     // Reserva o CPF antes de criar a conta — se já foi usado, bloqueia aqui,
-    // sem chegar a criar um novo usuário.
-    const { data: cpfReservado, error: cpfError } = await supabase
+    // sem chegar a criar um novo usuário. Não usamos .select() de propósito:
+    // a tabela não tem permissão de leitura pública, só de escrita.
+    const { error: cpfError } = await supabase
       .from('trial_cpfs')
-      .insert({ cpf: cpfLimpo, email: signupEmail })
-      .select()
-      .single();
+      .insert({ cpf: cpfLimpo, email: signupEmail });
 
     if (cpfError) {
       if (cpfError.code === '23505') {
@@ -325,9 +324,8 @@ export default function App() {
 
     if (error) {
       // Libera o CPF reservado, já que a conta não foi criada de fato
-      if (cpfReservado?.id) {
-        await supabase.from('trial_cpfs').delete().eq('id', cpfReservado.id);
-      }
+      // (busca pelo próprio CPF, já que não temos o id retornado)
+      await supabase.from('trial_cpfs').delete().eq('cpf', cpfLimpo);
 
       if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('already exists')) {
         setSignupError('Esse e-mail já tem uma conta. Faça login normalmente.');
