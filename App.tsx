@@ -263,6 +263,16 @@ export default function App() {
 
   // MONITORAR SESSÃO DO SUPABASE
   useEffect(() => {
+    // Detecta direto pela URL se este acesso veio de um link de redefinição
+    // de senha — mais confiável do que depender só do evento do Supabase,
+    // que às vezes chega depois da primeira renderização da tela.
+    const urlTemRecovery =
+      window.location.hash.includes('type=recovery') ||
+      window.location.search.includes('type=recovery');
+    if (urlTemRecovery) {
+      setPasswordRecoveryMode(true);
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
@@ -801,6 +811,89 @@ export default function App() {
   }, [cadernoErros]);
 
   // TELA DE LOGIN / CADASTRO (TESTE GRÁTIS)
+  // TELA DE REDEFINIR SENHA (APÓS CLICAR NO LINK DE "ESQUECI MINHA SENHA")
+  if (passwordRecoveryMode) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
+        <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
+          <div className="text-center space-y-1">
+            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Lock className="w-5 h-5 text-amber-500" />
+            </div>
+            <h1 className="text-xl font-black text-amber-500">Criar nova senha</h1>
+            <p className="text-xs text-slate-400">Defina a nova senha da sua conta.</p>
+          </div>
+
+          {recoverySuccess ? (
+            <div className="text-center py-4 space-y-2">
+              <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto" />
+              <p className="text-sm font-bold text-slate-200">Senha redefinida!</p>
+              <p className="text-xs text-slate-400">Você já pode continuar usando o app normalmente.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              {recoveryError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl text-center font-medium">
+                  {recoveryError}
+                </div>
+              )}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-300">Nova Senha</label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <input
+                    type={showRecoveryNovaSenha ? 'text' : 'password'}
+                    required
+                    value={recoveryNovaSenha}
+                    onChange={(e) => setRecoveryNovaSenha(e.target.value)}
+                    placeholder="Mínimo 8 caracteres"
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRecoveryNovaSenha((prev) => !prev)}
+                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                  >
+                    {showRecoveryNovaSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-300">Confirmar Nova Senha</label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <input
+                    type={showRecoveryConfirmaSenha ? 'text' : 'password'}
+                    required
+                    value={recoveryConfirmaSenha}
+                    onChange={(e) => setRecoveryConfirmaSenha(e.target.value)}
+                    placeholder="Repita a nova senha"
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRecoveryConfirmaSenha((prev) => !prev)}
+                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                  >
+                    {showRecoveryConfirmaSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={recoverySubmitting}
+                className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
+              >
+                {recoverySubmitting ? 'Salvando...' : 'Salvar Nova Senha'}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+
   if (!session) {
     // ---- TELA DE "ESQUECI MINHA SENHA" ----
     if (showForgotPassword) {
@@ -1073,88 +1166,6 @@ export default function App() {
           <p className="text-[11px] text-center text-slate-500">
             Ainda não tem acesso? Adquira seu plano em nossa página oficial.
           </p>
-        </div>
-      </div>
-    );
-  }
-
-  // TELA DE REDEFINIR SENHA (APÓS CLICAR NO LINK DE "ESQUECI MINHA SENHA")
-  if (passwordRecoveryMode) {
-    return (
-      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
-        <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
-          <div className="text-center space-y-1">
-            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
-              <Lock className="w-5 h-5 text-amber-500" />
-            </div>
-            <h1 className="text-xl font-black text-amber-500">Criar nova senha</h1>
-            <p className="text-xs text-slate-400">Defina a nova senha da sua conta.</p>
-          </div>
-
-          {recoverySuccess ? (
-            <div className="text-center py-4 space-y-2">
-              <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto" />
-              <p className="text-sm font-bold text-slate-200">Senha redefinida!</p>
-              <p className="text-xs text-slate-400">Você já pode continuar usando o app normalmente.</p>
-            </div>
-          ) : (
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              {recoveryError && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl text-center font-medium">
-                  {recoveryError}
-                </div>
-              )}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-300">Nova Senha</label>
-                <div className="relative">
-                  <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                  <input
-                    type={showRecoveryNovaSenha ? 'text' : 'password'}
-                    required
-                    value={recoveryNovaSenha}
-                    onChange={(e) => setRecoveryNovaSenha(e.target.value)}
-                    placeholder="Mínimo 8 caracteres"
-                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowRecoveryNovaSenha((prev) => !prev)}
-                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
-                  >
-                    {showRecoveryNovaSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-300">Confirmar Nova Senha</label>
-                <div className="relative">
-                  <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                  <input
-                    type={showRecoveryConfirmaSenha ? 'text' : 'password'}
-                    required
-                    value={recoveryConfirmaSenha}
-                    onChange={(e) => setRecoveryConfirmaSenha(e.target.value)}
-                    placeholder="Repita a nova senha"
-                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowRecoveryConfirmaSenha((prev) => !prev)}
-                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
-                  >
-                    {showRecoveryConfirmaSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={recoverySubmitting}
-                className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
-              >
-                {recoverySubmitting ? 'Salvando...' : 'Salvar Nova Senha'}
-              </button>
-            </form>
-          )}
         </div>
       </div>
     );
