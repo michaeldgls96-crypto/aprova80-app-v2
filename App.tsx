@@ -140,6 +140,15 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
 
+  // ESTADOS DE CADASTRO — TESTE GRÁTIS (7 DIAS)
+  const [showSignup, setShowSignup] = useState(false);
+  const [signupName, setSignupName] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [signupError, setSignupError] = useState('');
+  const [signupSuccess, setSignupSuccess] = useState(false);
+
   // ESTADOS DE TROCA DE SENHA OBRIGATÓRIA (PRIMEIRO ACESSO)
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmaSenha, setConfirmaSenha] = useState('');
@@ -230,6 +239,54 @@ export default function App() {
       setAuthError('E-mail ou senha incorretos.');
     }
     setAuthLoading(false);
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignupLoading(true);
+    setSignupError('');
+
+    if (signupPassword.length < 8) {
+      setSignupError('A senha precisa ter pelo menos 8 caracteres.');
+      setSignupLoading(false);
+      return;
+    }
+
+    const expiraEm = new Date();
+    expiraEm.setDate(expiraEm.getDate() + 7);
+
+    const { data, error } = await supabase.auth.signUp({
+      email: signupEmail,
+      password: signupPassword,
+      options: {
+        data: {
+          name: signupName,
+          role: 'student',
+          plan: 'trial',
+          expires_at: expiraEm.toISOString(),
+          must_change_password: false,
+        },
+      },
+    });
+
+    if (error) {
+      if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('already exists')) {
+        setSignupError('Esse e-mail já tem uma conta. Faça login normalmente.');
+      } else {
+        setSignupError('Não foi possível criar sua conta. Tente novamente.');
+      }
+      setSignupLoading(false);
+      return;
+    }
+
+    // Se a confirmação de e-mail estiver desativada no Supabase, já vem sessão pronta
+    if (data.session) {
+      setSession(data.session);
+    } else {
+      setSignupSuccess(true);
+    }
+
+    setSignupLoading(false);
   };
 
   const handleLogout = async () => {
@@ -583,8 +640,109 @@ export default function App() {
     return contagem;
   }, [cadernoErros]);
 
-  // TELA DE LOGIN
+  // TELA DE LOGIN / CADASTRO (TESTE GRÁTIS)
   if (!session) {
+    // ---- TELA DE CADASTRO (TESTE GRÁTIS 7 DIAS) ----
+    if (showSignup) {
+      return (
+        <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
+            <div className="text-center space-y-1">
+              <h1 className="text-2xl font-black text-amber-500">APROVA 80</h1>
+              <p className="text-xs text-slate-400">Teste grátis por 7 dias</p>
+            </div>
+
+            {signupSuccess ? (
+              <div className="text-center py-4 space-y-3">
+                <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto" />
+                <p className="text-sm font-bold text-slate-200">Conta criada!</p>
+                <p className="text-xs text-slate-400">
+                  Confira seu e-mail para confirmar o cadastro (se necessário) e depois faça login normalmente.
+                </p>
+                <button
+                  onClick={() => { setShowSignup(false); setSignupSuccess(false); }}
+                  className="w-full py-2.5 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-amber-400 transition cursor-pointer"
+                >
+                  Ir para o login
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSignup} className="space-y-4">
+                {signupError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl text-center font-medium">
+                    {signupError}
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-300">Nome</label>
+                  <input
+                    type="text"
+                    required
+                    value={signupName}
+                    onChange={(e) => setSignupName(e.target.value)}
+                    placeholder="Seu nome"
+                    className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-300">E-mail</label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                    <input
+                      type="email"
+                      required
+                      value={signupEmail}
+                      onChange={(e) => setSignupEmail(e.target.value)}
+                      placeholder="seu@email.com"
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-300">Crie uma senha</label>
+                  <div className="relative">
+                    <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                    <input
+                      type="password"
+                      required
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      placeholder="Mínimo 8 caracteres"
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={signupLoading}
+                  className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
+                >
+                  {signupLoading ? 'Criando conta...' : 'Começar teste grátis de 7 dias'}
+                </button>
+              </form>
+            )}
+
+            {!signupSuccess && (
+              <p className="text-[11px] text-center text-slate-500">
+                Já tem conta?{' '}
+                <button
+                  onClick={() => setShowSignup(false)}
+                  className="text-amber-500 font-bold cursor-pointer hover:underline"
+                >
+                  Fazer login
+                </button>
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ---- TELA DE LOGIN ----
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
         <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
@@ -638,6 +796,13 @@ export default function App() {
               {authLoading ? 'Entrando...' : 'Acessar Plataforma'}
             </button>
           </form>
+
+          <button
+            onClick={() => setShowSignup(true)}
+            className="w-full py-2.5 border border-amber-500/30 text-amber-500 font-bold text-xs rounded-xl hover:bg-amber-500/10 transition cursor-pointer"
+          >
+            Testar grátis por 7 dias
+          </button>
 
           <p className="text-[11px] text-center text-slate-500">
             Ainda não tem acesso? Adquira seu plano em nossa página oficial.
@@ -712,9 +877,52 @@ export default function App() {
     );
   }
 
+  // TELA DE ACESSO EXPIRADO (TESTE GRÁTIS OU ASSINATURA VENCIDA)
+  const expiresAtStr = session?.user?.user_metadata?.expires_at;
+  const planoAtual = session?.user?.user_metadata?.plan;
+  const acessoExpirado = expiresAtStr ? new Date(expiresAtStr) < new Date() : false;
+
+  if (acessoExpirado) {
+    const ehTeste = planoAtual === 'trial';
+    return (
+      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
+        <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-5 shadow-2xl text-center">
+          <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto">
+            <Lock className="w-6 h-6 text-amber-500" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-amber-500">
+              {ehTeste ? 'Seu teste grátis acabou' : 'Sua assinatura venceu'}
+            </h1>
+            <p className="text-xs text-slate-400 mt-2">
+              {ehTeste
+                ? 'Os 7 dias de teste grátis chegaram ao fim. Assine um plano para continuar estudando com o APROVA 80.'
+                : 'Não identificamos uma renovação do seu plano. Assine novamente para continuar tendo acesso.'}
+            </p>
+          </div>
+          <a
+            href="https://aprova80.netlify.app/#planos"
+            className="block w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition"
+          >
+            Ver planos e assinar
+          </a>
+          <button
+            onClick={handleLogout}
+            className="w-full py-2.5 text-slate-400 text-xs font-bold hover:text-red-400 transition cursor-pointer"
+          >
+            Sair da conta
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // APLICATIVO PRINCIPAL
   // Mobile (< md): layout de cartão único, centralizado, com header fixo em cima e navegação fixa embaixo (como antes).
   // Desktop (>= md): layout ocupando a tela inteira, com menu lateral fixo à esquerda substituindo header + navegação inferior.
+  const diasRestantesTeste = planoAtual === 'trial' && expiresAtStr
+    ? Math.max(0, Math.ceil((new Date(expiresAtStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col md:flex-row print:bg-white print:text-black">
 
@@ -731,6 +939,14 @@ export default function App() {
             <span>{streak} dias</span>
           </div>
         </div>
+
+        {diasRestantesTeste !== null && (
+          <div className="mb-6 p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl">
+            <p className="text-[11px] font-bold text-sky-400">
+              {diasRestantesTeste} {diasRestantesTeste === 1 ? 'dia restante' : 'dias restantes'} de teste grátis
+            </p>
+          </div>
+        )}
 
         <nav className="flex-1 flex flex-col gap-1">
           {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
@@ -822,6 +1038,13 @@ export default function App() {
             {/* HOME */}
             {activeTab === 'home' && (
               <div className="space-y-6">
+                {diasRestantesTeste !== null && (
+                  <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl md:hidden">
+                    <p className="text-xs font-bold text-sky-400 text-center">
+                      {diasRestantesTeste} {diasRestantesTeste === 1 ? 'dia restante' : 'dias restantes'} de teste grátis
+                    </p>
+                  </div>
+                )}
                 <div className="p-6 md:p-8 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl text-slate-950 font-bold space-y-2 shadow-lg">
                   <span className="text-xs uppercase tracking-wider bg-slate-950/20 px-2 py-0.5 rounded text-slate-950">
                     Meta Diária
