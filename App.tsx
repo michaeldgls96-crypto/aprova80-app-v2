@@ -4,7 +4,7 @@ import {
   Flame, CheckCircle, Zap, ShieldCheck, Home, 
   AlertTriangle, ChevronRight, FileText, BookOpen, 
   X, Download, PieChart, Layers, Filter, Printer, 
-  Smartphone, Mail, KeyRound, LogOut, Lock, PenLine, MessageCircle, Send
+  Smartphone, Mail, KeyRound, LogOut, Lock, PenLine, MessageCircle, Send, Eye, EyeOff
 } from 'lucide-react';
 
 // INTERFACES
@@ -167,6 +167,7 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
 
@@ -176,13 +177,33 @@ export default function App() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupCpf, setSignupCpf] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState('');
   const [signupSuccess, setSignupSuccess] = useState(false);
 
+  // ESTADOS DE "ESQUECI MINHA SENHA"
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+
+  // ESTADOS DE REDEFINIR SENHA (APÓS CLICAR NO LINK DO E-MAIL)
+  const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(false);
+  const [recoveryNovaSenha, setRecoveryNovaSenha] = useState('');
+  const [recoveryConfirmaSenha, setRecoveryConfirmaSenha] = useState('');
+  const [showRecoveryNovaSenha, setShowRecoveryNovaSenha] = useState(false);
+  const [showRecoveryConfirmaSenha, setShowRecoveryConfirmaSenha] = useState(false);
+  const [recoverySubmitting, setRecoverySubmitting] = useState(false);
+  const [recoveryError, setRecoveryError] = useState('');
+  const [recoverySuccess, setRecoverySuccess] = useState(false);
+
   // ESTADOS DE TROCA DE SENHA OBRIGATÓRIA (PRIMEIRO ACESSO)
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmaSenha, setConfirmaSenha] = useState('');
+  const [showNovaSenha, setShowNovaSenha] = useState(false);
+  const [showConfirmaSenha, setShowConfirmaSenha] = useState(false);
   const [trocandoSenha, setTrocandoSenha] = useState(false);
   const [erroSenha, setErroSenha] = useState('');
 
@@ -246,8 +267,14 @@ export default function App() {
       setSession(session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      // Quando a pessoa clica no link de "esqueci minha senha" do e-mail,
+      // o Supabase dispara esse evento específico — usamos isso pra mostrar
+      // a tela de redefinir senha, em vez do app normal.
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecoveryMode(true);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -267,6 +294,56 @@ export default function App() {
       setAuthError('E-mail ou senha incorretos.');
     }
     setAuthLoading(false);
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    setForgotError('');
+
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: window.location.origin,
+    });
+
+    if (error) {
+      setForgotError('Não foi possível enviar o e-mail. Confira o endereço digitado.');
+    } else {
+      setForgotSent(true);
+    }
+    setForgotLoading(false);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryError('');
+
+    if (recoveryNovaSenha.length < 8) {
+      setRecoveryError('A senha precisa ter pelo menos 8 caracteres.');
+      return;
+    }
+    if (recoveryNovaSenha !== recoveryConfirmaSenha) {
+      setRecoveryError('As senhas não coincidem.');
+      return;
+    }
+
+    setRecoverySubmitting(true);
+
+    const { error } = await supabase.auth.updateUser({ password: recoveryNovaSenha });
+
+    if (error) {
+      setRecoveryError('Não foi possível redefinir sua senha. Tente novamente.');
+      setRecoverySubmitting(false);
+      return;
+    }
+
+    setRecoverySuccess(true);
+    setRecoverySubmitting(false);
+    setTimeout(() => {
+      setPasswordRecoveryMode(false);
+      setRecoverySuccess(false);
+      setRecoveryNovaSenha('');
+      setRecoveryConfirmaSenha('');
+    }, 1800);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -725,6 +802,75 @@ export default function App() {
 
   // TELA DE LOGIN / CADASTRO (TESTE GRÁTIS)
   if (!session) {
+    // ---- TELA DE "ESQUECI MINHA SENHA" ----
+    if (showForgotPassword) {
+      return (
+        <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
+            <div className="text-center space-y-1">
+              <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                <KeyRound className="w-5 h-5 text-amber-500" />
+              </div>
+              <h1 className="text-xl font-black text-amber-500">Esqueceu sua senha?</h1>
+              <p className="text-xs text-slate-400">Informe seu e-mail e mandamos um link para redefinir.</p>
+            </div>
+
+            {forgotSent ? (
+              <div className="text-center py-4 space-y-3">
+                <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto" />
+                <p className="text-sm font-bold text-slate-200">E-mail enviado!</p>
+                <p className="text-xs text-slate-400">
+                  Confira sua caixa de entrada (e o spam) e clique no link para criar uma nova senha.
+                </p>
+                <button
+                  onClick={() => { setShowForgotPassword(false); setForgotSent(false); }}
+                  className="w-full py-2.5 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-amber-400 transition cursor-pointer"
+                >
+                  Voltar para o login
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                {forgotError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl text-center font-medium">
+                    {forgotError}
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-300">E-mail</label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                    <input
+                      type="email"
+                      required
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="seu@email.com"
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
+                >
+                  {forgotLoading ? 'Enviando...' : 'Enviar link de redefinição'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(false)}
+                  className="w-full text-center text-[11px] text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                >
+                  Voltar para o login
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     // ---- TELA DE CADASTRO (TESTE GRÁTIS 7 DIAS) ----
     if (showSignup) {
       return (
@@ -804,13 +950,20 @@ export default function App() {
                   <div className="relative">
                     <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                     <input
-                      type="password"
+                      type={showSignupPassword ? 'text' : 'password'}
                       required
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
                       placeholder="Mínimo 8 caracteres"
-                      className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                      className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignupPassword((prev) => !prev)}
+                      className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                    >
+                      {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 
@@ -876,13 +1029,20 @@ export default function App() {
               <div className="relative">
                 <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -892,6 +1052,14 @@ export default function App() {
               className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
             >
               {authLoading ? 'Entrando...' : 'Acessar Plataforma'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setShowForgotPassword(true); setForgotEmail(email); }}
+              className="w-full text-center text-[11px] text-slate-400 hover:text-amber-500 transition cursor-pointer"
+            >
+              Esqueci minha senha
             </button>
           </form>
 
@@ -905,6 +1073,88 @@ export default function App() {
           <p className="text-[11px] text-center text-slate-500">
             Ainda não tem acesso? Adquira seu plano em nossa página oficial.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // TELA DE REDEFINIR SENHA (APÓS CLICAR NO LINK DE "ESQUECI MINHA SENHA")
+  if (passwordRecoveryMode) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
+        <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
+          <div className="text-center space-y-1">
+            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Lock className="w-5 h-5 text-amber-500" />
+            </div>
+            <h1 className="text-xl font-black text-amber-500">Criar nova senha</h1>
+            <p className="text-xs text-slate-400">Defina a nova senha da sua conta.</p>
+          </div>
+
+          {recoverySuccess ? (
+            <div className="text-center py-4 space-y-2">
+              <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto" />
+              <p className="text-sm font-bold text-slate-200">Senha redefinida!</p>
+              <p className="text-xs text-slate-400">Você já pode continuar usando o app normalmente.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              {recoveryError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl text-center font-medium">
+                  {recoveryError}
+                </div>
+              )}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-300">Nova Senha</label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <input
+                    type={showRecoveryNovaSenha ? 'text' : 'password'}
+                    required
+                    value={recoveryNovaSenha}
+                    onChange={(e) => setRecoveryNovaSenha(e.target.value)}
+                    placeholder="Mínimo 8 caracteres"
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRecoveryNovaSenha((prev) => !prev)}
+                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                  >
+                    {showRecoveryNovaSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-300">Confirmar Nova Senha</label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <input
+                    type={showRecoveryConfirmaSenha ? 'text' : 'password'}
+                    required
+                    value={recoveryConfirmaSenha}
+                    onChange={(e) => setRecoveryConfirmaSenha(e.target.value)}
+                    placeholder="Repita a nova senha"
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRecoveryConfirmaSenha((prev) => !prev)}
+                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                  >
+                    {showRecoveryConfirmaSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={recoverySubmitting}
+                className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
+              >
+                {recoverySubmitting ? 'Salvando...' : 'Salvar Nova Senha'}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     );
@@ -937,13 +1187,20 @@ export default function App() {
               <div className="relative">
                 <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
-                  type="password"
+                  type={showNovaSenha ? 'text' : 'password'}
                   required
                   value={novaSenha}
                   onChange={(e) => setNovaSenha(e.target.value)}
                   placeholder="Mínimo 8 caracteres"
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowNovaSenha((prev) => !prev)}
+                  className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                >
+                  {showNovaSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -952,13 +1209,20 @@ export default function App() {
               <div className="relative">
                 <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
-                  type="password"
+                  type={showConfirmaSenha ? 'text' : 'password'}
                   required
                   value={confirmaSenha}
                   onChange={(e) => setConfirmaSenha(e.target.value)}
                   placeholder="Repita a nova senha"
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmaSenha((prev) => !prev)}
+                  className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
+                >
+                  {showConfirmaSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
