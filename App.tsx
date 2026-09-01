@@ -68,6 +68,36 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 // RENDERIZADOR SIMPLES DE TEXTO FORMATADO (SEM DEPENDÊNCIA EXTERNA)
 // Suporta: # ## ### para títulos, - ou * para listas, **texto** para negrito
+// VALIDAÇÃO E FORMATAÇÃO DE CPF
+function validarCPF(cpfInput: string): boolean {
+  const cpf = cpfInput.replace(/\D/g, '');
+  if (cpf.length !== 11) return false;
+  // Rejeita sequências de dígitos repetidos (111.111.111-11, 000.000.000-00, etc.)
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+  let soma = 0;
+  for (let i = 0; i < 9; i++) soma += parseInt(cpf[i]) * (10 - i);
+  let resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  if (resto !== parseInt(cpf[9])) return false;
+
+  soma = 0;
+  for (let i = 0; i < 10; i++) soma += parseInt(cpf[i]) * (11 - i);
+  resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  if (resto !== parseInt(cpf[10])) return false;
+
+  return true;
+}
+
+function formatarCPF(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
 function renderInline(text: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, i) => {
@@ -144,6 +174,7 @@ export default function App() {
   const [showSignup, setShowSignup] = useState(false);
   const [signupName, setSignupName] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
+  const [signupCpf, setSignupCpf] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState('');
@@ -249,6 +280,31 @@ export default function App() {
       return;
     }
 
+    const cpfLimpo = signupCpf.replace(/\D/g, '');
+    if (!validarCPF(cpfLimpo)) {
+      setSignupError('CPF inválido. Confira os números digitados.');
+      setSignupLoading(false);
+      return;
+    }
+
+    // Reserva o CPF antes de criar a conta — se já foi usado, bloqueia aqui,
+    // sem chegar a criar um novo usuário.
+    const { data: cpfReservado, error: cpfError } = await supabase
+      .from('trial_cpfs')
+      .insert({ cpf: cpfLimpo, email: signupEmail })
+      .select()
+      .single();
+
+    if (cpfError) {
+      if (cpfError.code === '23505') {
+        setSignupError('Esse CPF já utilizou o teste grátis anteriormente. Assine um plano para continuar.');
+      } else {
+        setSignupError('Não foi possível validar seu CPF. Tente novamente.');
+      }
+      setSignupLoading(false);
+      return;
+    }
+
     const expiraEm = new Date();
     expiraEm.setDate(expiraEm.getDate() + 7);
 
@@ -262,11 +318,17 @@ export default function App() {
           plan: 'trial',
           expires_at: expiraEm.toISOString(),
           must_change_password: false,
+          cpf: cpfLimpo,
         },
       },
     });
 
     if (error) {
+      // Libera o CPF reservado, já que a conta não foi criada de fato
+      if (cpfReservado?.id) {
+        await supabase.from('trial_cpfs').delete().eq('id', cpfReservado.id);
+      }
+
       if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('already exists')) {
         setSignupError('Esse e-mail já tem uma conta. Faça login normalmente.');
       } else {
@@ -722,6 +784,21 @@ export default function App() {
                       className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-300">CPF</label>
+                  <input
+                    type="text"
+                    required
+                    inputMode="numeric"
+                    value={signupCpf}
+                    onChange={(e) => setSignupCpf(formatarCPF(e.target.value))}
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                    className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  />
+                  <p className="text-[10px] text-slate-500">Usado só para liberar 1 teste grátis por pessoa.</p>
                 </div>
 
                 <div className="space-y-1">
