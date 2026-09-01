@@ -197,20 +197,17 @@ export default function App() {
 
   // ANOTAÇÕES PESSOAIS
   const [notesDiscipline, setNotesDiscipline] = useState<string>(LISTA_DISCIPLINAS[0] || 'Língua Portuguesa');
-  const [notes, setNotes] = useState<Record<string, string>>(() => {
-    const salvos = localStorage.getItem('aprova80_anotacoes');
-    return salvos ? JSON.parse(salvos) : {};
-  });
+  const [notes, setNotes] = useState<Record<string, string>>({});
 
-  const [stats, setStats] = useState(() => {
-    const salvos = localStorage.getItem('aprova80_stats');
-    return salvos ? JSON.parse(salvos) : { totalRespondidas: 0, totalAcertos: 0 };
-  });
+  const [stats, setStats] = useState({ totalRespondidas: 0, totalAcertos: 0 });
 
-  const [cadernoErros, setCadernoErros] = useState<Question[]>(() => {
-    const salvos = localStorage.getItem('aprova80_erros');
-    return salvos ? JSON.parse(salvos) : [];
-  });
+  const [cadernoErros, setCadernoErros] = useState<Question[]>([]);
+
+  // Controla se os dados locais (stats, erros, anotações) já foram carregados
+  // para o usuário atual — evita sobrescrever o localStorage com valores vazios
+  // antes do carregamento terminar, e evita misturar dados entre contas diferentes
+  // no mesmo navegador.
+  const [dadosLocaisCarregados, setDadosLocaisCarregados] = useState(false);
 
   // MONITORAR SESSÃO DO SUPABASE
   useEffect(() => {
@@ -352,17 +349,43 @@ export default function App() {
     setDeferredPrompt(null);
   };
 
+  // Carrega os dados locais (estatísticas, caderno de erros, anotações)
+  // específicos do usuário logado, assim que a sessão é conhecida.
+  // Isso evita que uma conta veja os dados salvos de outra conta usada
+  // anteriormente no mesmo navegador.
   useEffect(() => {
-    localStorage.setItem('aprova80_erros', JSON.stringify(cadernoErros));
-  }, [cadernoErros]);
+    const uid = session?.user?.id;
+    if (!uid) {
+      setDadosLocaisCarregados(false);
+      return;
+    }
+
+    const statsSalvos = localStorage.getItem(`aprova80_stats_${uid}`);
+    setStats(statsSalvos ? JSON.parse(statsSalvos) : { totalRespondidas: 0, totalAcertos: 0 });
+
+    const errosSalvos = localStorage.getItem(`aprova80_erros_${uid}`);
+    setCadernoErros(errosSalvos ? JSON.parse(errosSalvos) : []);
+
+    const notesSalvas = localStorage.getItem(`aprova80_anotacoes_${uid}`);
+    setNotes(notesSalvas ? JSON.parse(notesSalvas) : {});
+
+    setDadosLocaisCarregados(true);
+  }, [session?.user?.id]);
 
   useEffect(() => {
-    localStorage.setItem('aprova80_stats', JSON.stringify(stats));
-  }, [stats]);
+    if (!dadosLocaisCarregados || !session?.user?.id) return;
+    localStorage.setItem(`aprova80_erros_${session.user.id}`, JSON.stringify(cadernoErros));
+  }, [cadernoErros, dadosLocaisCarregados, session?.user?.id]);
 
   useEffect(() => {
-    localStorage.setItem('aprova80_anotacoes', JSON.stringify(notes));
-  }, [notes]);
+    if (!dadosLocaisCarregados || !session?.user?.id) return;
+    localStorage.setItem(`aprova80_stats_${session.user.id}`, JSON.stringify(stats));
+  }, [stats, dadosLocaisCarregados, session?.user?.id]);
+
+  useEffect(() => {
+    if (!dadosLocaisCarregados || !session?.user?.id) return;
+    localStorage.setItem(`aprova80_anotacoes_${session.user.id}`, JSON.stringify(notes));
+  }, [notes, dadosLocaisCarregados, session?.user?.id]);
 
   // BUSCA DE QUESTÕES NO SUPABASE
   useEffect(() => {
