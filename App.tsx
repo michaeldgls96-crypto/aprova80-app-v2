@@ -1328,7 +1328,7 @@ export default function App() {
         <div className="flex items-center gap-2 mb-6">
           <div className="flex items-center gap-1 bg-amber-500/10 text-amber-500 px-3 py-1.5 rounded-full border border-amber-500/20 text-sm font-bold">
             <Flame className="w-4 h-4 fill-amber-500" />
-            <span>{streak} dias</span>
+            <span>{streak} de sequência</span>
           </div>
         </div>
 
