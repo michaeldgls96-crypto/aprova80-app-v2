@@ -1586,13 +1586,22 @@ export default function App() {
                     </div>
 
                     {!isAnswered ? (
-                      <button
-                        disabled={!selectedOption}
-                        onClick={handleConfirmAnswer}
-                        className="w-full md:w-auto md:px-10 py-3 bg-amber-500 text-slate-950 font-bold rounded-xl disabled:opacity-50 transition cursor-pointer"
-                      >
-                        Responder
-                      </button>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          disabled={!selectedOption}
+                          onClick={handleConfirmAnswer}
+                          className="flex-1 md:flex-none md:px-10 py-3 bg-amber-500 text-slate-950 font-bold rounded-xl disabled:opacity-50 transition cursor-pointer"
+                        >
+                          Responder
+                        </button>
+                        <button
+                          onClick={handleNextQuestion}
+                          className="flex-1 md:flex-none md:px-6 py-3 border border-slate-700 text-slate-400 font-bold rounded-xl hover:bg-slate-800 hover:text-slate-200 transition cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          Pular questão
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
                     ) : (
                       <div className="space-y-3">
                         {currentQuestion.explanation && (
