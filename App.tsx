@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import {
   Flame, CheckCircle, Zap, ShieldCheck, Home, 
-  AlertTriangle, ChevronRight, FileText, BookOpen, 
+  AlertTriangle, ChevronRight, ChevronLeft, FileText, BookOpen, 
   X, Download, PieChart, Layers, Filter, Printer, 
   Smartphone, Mail, KeyRound, LogOut, Lock, PenLine, MessageCircle, Send, Eye, EyeOff
 } from 'lucide-react';
@@ -721,6 +721,15 @@ export default function App() {
     }
   };
 
+  const handleResetStats = () => {
+    const confirmar = window.confirm(
+      'Tem certeza que deseja zerar suas estatísticas de desempenho? Essa ação não pode ser desfeita.'
+    );
+    if (confirmar) {
+      setStats({ totalRespondidas: 0, totalAcertos: 0 });
+    }
+  };
+
   const handleOpenComments = async () => {
     if (!currentQuestion) return;
     setCommentsPanelOpen(true);
@@ -770,6 +779,16 @@ export default function App() {
     } finally {
       setCommentSubmitting(false);
     }
+  };
+
+  const handlePreviousQuestion = () => {
+    if (currentIndex === 0) return;
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setCommentsPanelOpen(false);
+    setComments([]);
+    setNewComment('');
+    setCurrentIndex((prev) => prev - 1);
   };
 
   const handleNextQuestion = () => {
@@ -1588,6 +1607,14 @@ export default function App() {
                     {!isAnswered ? (
                       <div className="flex flex-col sm:flex-row gap-2">
                         <button
+                          onClick={handlePreviousQuestion}
+                          disabled={currentIndex === 0}
+                          className="sm:flex-none px-4 py-3 border border-slate-700 text-slate-400 font-bold rounded-xl hover:bg-slate-800 hover:text-slate-200 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          <span className="sm:hidden">Voltar</span>
+                        </button>
+                        <button
                           disabled={!selectedOption}
                           onClick={handleConfirmAnswer}
                           className="flex-1 md:flex-none md:px-10 py-3 bg-amber-500 text-slate-950 font-bold rounded-xl disabled:opacity-50 transition cursor-pointer"
@@ -2055,6 +2082,13 @@ export default function App() {
                     <span className="text-red-400 font-semibold">● Erros: {totalErros}</span>
                   </div>
                 </div>
+
+                <button
+                  onClick={handleResetStats}
+                  className="w-full py-2.5 text-xs font-bold text-slate-500 hover:text-red-400 border border-slate-800 hover:border-red-500/30 rounded-xl transition cursor-pointer"
+                >
+                  Zerar estatísticas
+                </button>
               </div>
             )}
             </div>
