@@ -44,15 +44,11 @@ interface Material {
 // ESTRUTURA DE MATÉRIAS E SEUS TÓPICOS
 const ESTRUTURA_MATERIAS: Record<string, string[]> = {
   'Todas': ['Todos'],
-  'Língua Portuguesa': ['Todos', 'Compreensão e Interpretação de Textos', 'Acentuação Gráfica', 'Ortografia Oficial', 'Crase', 'Crase e Regência', 'Concordância Verbal', 'Concordância Nominal', 'Regência Verbal e Nominal', 'Colocação Pronominal', 'Pontuação', 'Sintaxe do Período', 'Classes de Palavras'],
-  'Raciocínio Lógico': ['Todos', 'Lógica de Proposições', 'Equivalências Lógicas', 'Estruturas Lógicas e Diagramas', 'Análise Combinatória', 'Probabilidade', 'Sequências e Padrões Numéricos'],
-  'Informática': ['Todos', 'Segurança da Informação', 'Malwares', 'Backup', 'Hardware - Armazenamento', 'Correio Eletrônico', 'Criptografia', 'Sistemas Operacionais', 'Redes de Computadores e Internet', 'Pacote Office', 'Computação em Nuvem'],
-  'Direito Penal': ['Todos', 'Excludentes de Ilicitude', 'Crimes Contra a Pessoa', 'Crimes Contra o Patrimônio', 'Crimes Contra a Administração Pública', 'Teoria do Crime', 'Concurso de Pessoas', 'Aplicação da Pena', 'Crimes Contra a Dignidade Sexual', 'Crimes Contra a Fé Pública', 'Extinção da Punibilidade', 'Crimes Contra a Incolumidade Pública', 'Feminicídio (Lei 14.994/2024)'],
-  'Processo Penal': ['Todos', 'Inquérito Policial', 'Prisão e Liberdade', 'Ação Penal', 'Sistema de Provas', 'Nulidades Processuais', 'Recursos'],
-  'Direito Constitucional': ['Todos', 'Remédios Constitucionais', 'Direitos e Garantias Fundamentais', 'Princípios Fundamentais', 'Organização do Estado', 'Poderes Executivo, Legislativo e Judiciário', 'Controle de Constitucionalidade'],
-  'Direito Administrativo': ['Todos', 'Atos Administrativos', 'Organização Administrativa', 'Princípios da Administração Pública', 'Poderes Administrativos', 'Licitações e Contratos', 'Responsabilidade Civil do Estado', 'Agentes Públicos'],
-  'Legislação Extravagante': ['Todos', 'Lei de Abuso de Autoridade', 'Lei de Drogas', 'Lei Maria da Penha', 'ECA', 'Estatuto do Idoso', 'Estatuto do Desarmamento', 'Lei de Tortura', 'Crimes Hediondos', 'Racismo', 'LEP', 'CTB', 'Deficientes', 'Lei 9099'],
-  'Direitos Humanos': ['Todos', 'Declaração Universal dos Direitos Humanos', 'Convenção Americana de Direitos Humanos (Pacto de São José)', 'Convenção de Belém do Pará', 'Sistema Interamericano de Proteção']
+  'Língua Portuguesa e Interpretação de Texto': ['Todos', 'Compreensão e Interpretação de Textos', 'Acentuação Gráfica', 'Ortografia Oficial', 'Crase', 'Crase e Regência', 'Concordância Verbal', 'Concordância Nominal', 'Regência Verbal e Nominal', 'Colocação Pronominal', 'Pontuação', 'Sintaxe do Período', 'Classes de Palavras'],
+  'Matemática': ['Todos', 'Operações com Números Naturais e Decimais', 'Frações', 'Porcentagem', 'Razão e Proporção', 'Regra de Três', 'Sistema Métrico Decimal', 'Equações do 1º Grau', 'Geometria Básica', 'Raciocínio Lógico-Matemático', 'Sequências e Progressões'],
+  'Conhecimentos Gerais': ['Todos', 'Atualidades', 'História do Brasil', 'História de São Paulo', 'Geografia do Brasil', 'Geografia de São Paulo'],
+  'Noções Básicas de Informática': ['Todos', 'Windows 10', 'Word 2016', 'Excel 2016', 'PowerPoint 2016', 'Internet e Navegadores', 'Google Workspace (Gmail e Drive)'],
+  'Noções de Administração Pública': ['Todos', 'Direitos e Deveres Individuais e Coletivos (CF/88)', 'Direitos Políticos do Militar', 'Princípios da Administração Pública (Art. 37 CF)', 'Segurança Pública (Art. 144 CF)', 'Justiça Militar Estadual', 'Constituição do Estado de São Paulo e a Polícia Militar']
 };
 
 const LISTA_DISCIPLINAS = Object.keys(ESTRUTURA_MATERIAS).filter(m => m !== 'Todas');
@@ -118,7 +114,7 @@ function renderContent(content: string): React.ReactNode {
   const flushList = () => {
     if (listItems.length > 0) {
       elements.push(
-        <ul key={`ul-${key++}`} className="list-disc list-inside space-y-1 my-2 marker:text-amber-500">
+        <ul key={`ul-${key++}`} className="list-disc list-inside space-y-1 my-2 marker:text-red-600">
           {listItems.map((item, i) => (
             <li key={i} className="text-sm text-slate-300 leading-relaxed">{renderInline(item)}</li>
           ))}
@@ -132,13 +128,13 @@ function renderContent(content: string): React.ReactNode {
     const trimmed = rawLine.trim();
     if (trimmed.startsWith('### ')) {
       flushList();
-      elements.push(<h4 key={key++} className="text-sm font-bold text-amber-400 mt-4 mb-1">{renderInline(trimmed.slice(4))}</h4>);
+      elements.push(<h4 key={key++} className="text-sm font-bold text-red-500 mt-4 mb-1">{renderInline(trimmed.slice(4))}</h4>);
     } else if (trimmed.startsWith('## ')) {
       flushList();
-      elements.push(<h3 key={key++} className="text-base font-bold text-amber-500 mt-4 mb-2">{renderInline(trimmed.slice(3))}</h3>);
+      elements.push(<h3 key={key++} className="text-base font-bold text-red-600 mt-4 mb-2">{renderInline(trimmed.slice(3))}</h3>);
     } else if (trimmed.startsWith('# ')) {
       flushList();
-      elements.push(<h2 key={key++} className="text-lg font-black text-amber-500 mt-4 mb-2">{renderInline(trimmed.slice(2))}</h2>);
+      elements.push(<h2 key={key++} className="text-lg font-black text-red-600 mt-4 mb-2">{renderInline(trimmed.slice(2))}</h2>);
     } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
       listItems.push(trimmed.slice(2));
     } else if (trimmed === '') {
@@ -209,7 +205,7 @@ export default function App() {
 
   // ESTADOS NAVEGAÇÃO
   const [activeTab, setActiveTab] = useState<'home' | 'simulado' | 'caderno' | 'materiais' | 'anotacoes' | 'stats'>('home');
-  const [selectedDiscipline, setSelectedDiscipline] = useState<string>(LISTA_DISCIPLINAS[0] || 'Língua Portuguesa');
+  const [selectedDiscipline, setSelectedDiscipline] = useState<string>(LISTA_DISCIPLINAS[0] || 'Língua Portuguesa e Interpretação de Texto');
   const [materialTab, setMaterialTab] = useState<'resumo' | 'mapa_mental'>('resumo');
   const [materialTopic, setMaterialTopic] = useState<string>('Todos');
 
@@ -248,7 +244,7 @@ export default function App() {
   const [loadingMaterials, setLoadingMaterials] = useState(true);
 
   // ANOTAÇÕES PESSOAIS
-  const [notesDiscipline, setNotesDiscipline] = useState<string>(LISTA_DISCIPLINAS[0] || 'Língua Portuguesa');
+  const [notesDiscipline, setNotesDiscipline] = useState<string>(LISTA_DISCIPLINAS[0] || 'Língua Portuguesa e Interpretação de Texto');
   const [notes, setNotes] = useState<Record<string, string>>({});
 
   const [stats, setStats] = useState({ totalRespondidas: 0, totalAcertos: 0 });
@@ -580,11 +576,13 @@ export default function App() {
               const optB = q.option_b || q.b;
               const optC = q.option_c || q.c;
               const optD = q.option_d || q.d;
+              const optE = q.option_e || q.e;
 
               if (optA) optionsList.push({ letter: 'A', text: optA });
               if (optB) optionsList.push({ letter: 'B', text: optB });
               if (optC) optionsList.push({ letter: 'C', text: optC });
               if (optD) optionsList.push({ letter: 'D', text: optD });
+              if (optE) optionsList.push({ letter: 'E', text: optE });
             }
 
             return {
@@ -836,10 +834,10 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
         <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
           <div className="text-center space-y-1">
-            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
-              <Lock className="w-5 h-5 text-amber-500" />
+            <div className="w-12 h-12 bg-red-600/10 border border-red-600/20 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Lock className="w-5 h-5 text-red-600" />
             </div>
-            <h1 className="text-xl font-black text-amber-500">Criar nova senha</h1>
+            <h1 className="text-xl font-black text-red-600">Criar nova senha</h1>
             <p className="text-xs text-slate-400">Defina a nova senha da sua conta.</p>
           </div>
 
@@ -866,7 +864,7 @@ export default function App() {
                     value={recoveryNovaSenha}
                     onChange={(e) => setRecoveryNovaSenha(e.target.value)}
                     placeholder="Mínimo 8 caracteres"
-                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-red-600"
                   />
                   <button
                     type="button"
@@ -887,7 +885,7 @@ export default function App() {
                     value={recoveryConfirmaSenha}
                     onChange={(e) => setRecoveryConfirmaSenha(e.target.value)}
                     placeholder="Repita a nova senha"
-                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-red-600"
                   />
                   <button
                     type="button"
@@ -901,7 +899,7 @@ export default function App() {
               <button
                 type="submit"
                 disabled={recoverySubmitting}
-                className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
+                className="w-full py-3 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-500 transition disabled:opacity-50"
               >
                 {recoverySubmitting ? 'Salvando...' : 'Salvar Nova Senha'}
               </button>
@@ -920,10 +918,10 @@ export default function App() {
         <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
           <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
             <div className="text-center space-y-1">
-              <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                <KeyRound className="w-5 h-5 text-amber-500" />
+              <div className="w-12 h-12 bg-red-600/10 border border-red-600/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                <KeyRound className="w-5 h-5 text-red-600" />
               </div>
-              <h1 className="text-xl font-black text-amber-500">Esqueceu sua senha?</h1>
+              <h1 className="text-xl font-black text-red-600">Esqueceu sua senha?</h1>
               <p className="text-xs text-slate-400">Informe seu e-mail e mandamos um link para redefinir.</p>
             </div>
 
@@ -936,7 +934,7 @@ export default function App() {
                 </p>
                 <button
                   onClick={() => { setShowForgotPassword(false); setForgotSent(false); }}
-                  className="w-full py-2.5 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-amber-400 transition cursor-pointer"
+                  className="w-full py-2.5 bg-red-600 text-white font-bold text-xs rounded-xl hover:bg-red-500 transition cursor-pointer"
                 >
                   Voltar para o login
                 </button>
@@ -958,14 +956,14 @@ export default function App() {
                       value={forgotEmail}
                       onChange={(e) => setForgotEmail(e.target.value)}
                       placeholder="seu@email.com"
-                      className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-red-600"
                     />
                   </div>
                 </div>
                 <button
                   type="submit"
                   disabled={forgotLoading}
-                  className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
+                  className="w-full py-3 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-500 transition disabled:opacity-50"
                 >
                   {forgotLoading ? 'Enviando...' : 'Enviar link de redefinição'}
                 </button>
@@ -989,7 +987,7 @@ export default function App() {
         <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
           <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
             <div className="text-center space-y-1">
-              <h1 className="text-2xl font-black text-amber-500">APROVA 80</h1>
+              <h1 className="text-2xl font-black text-red-600">APROVA 80</h1>
               <p className="text-xs text-slate-400">Teste grátis por 7 dias</p>
             </div>
 
@@ -1002,7 +1000,7 @@ export default function App() {
                 </p>
                 <button
                   onClick={() => { setShowSignup(false); setSignupSuccess(false); }}
-                  className="w-full py-2.5 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-amber-400 transition cursor-pointer"
+                  className="w-full py-2.5 bg-red-600 text-white font-bold text-xs rounded-xl hover:bg-red-500 transition cursor-pointer"
                 >
                   Ir para o login
                 </button>
@@ -1023,7 +1021,7 @@ export default function App() {
                     value={signupName}
                     onChange={(e) => setSignupName(e.target.value)}
                     placeholder="Seu nome"
-                    className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-red-600"
                   />
                 </div>
 
@@ -1037,7 +1035,7 @@ export default function App() {
                       value={signupEmail}
                       onChange={(e) => setSignupEmail(e.target.value)}
                       placeholder="seu@email.com"
-                      className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-red-600"
                     />
                   </div>
                 </div>
@@ -1052,7 +1050,7 @@ export default function App() {
                     onChange={(e) => setSignupCpf(formatarCPF(e.target.value))}
                     placeholder="000.000.000-00"
                     maxLength={14}
-                    className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-red-600"
                   />
                   <p className="text-[10px] text-slate-500">Usado só para liberar 1 teste grátis por pessoa.</p>
                 </div>
@@ -1067,7 +1065,7 @@ export default function App() {
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
                       placeholder="Mínimo 8 caracteres"
-                      className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                      className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-red-600"
                     />
                     <button
                       type="button"
@@ -1082,7 +1080,7 @@ export default function App() {
                 <button
                   type="submit"
                   disabled={signupLoading}
-                  className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
+                  className="w-full py-3 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-500 transition disabled:opacity-50"
                 >
                   {signupLoading ? 'Criando conta...' : 'Começar teste grátis de 7 dias'}
                 </button>
@@ -1094,7 +1092,7 @@ export default function App() {
                 Já tem conta?{' '}
                 <button
                   onClick={() => setShowSignup(false)}
-                  className="text-amber-500 font-bold cursor-pointer hover:underline"
+                  className="text-red-600 font-bold cursor-pointer hover:underline"
                 >
                   Fazer login
                 </button>
@@ -1110,7 +1108,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
         <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
           <div className="text-center space-y-1">
-            <h1 className="text-2xl font-black text-amber-500">APROVA 80</h1>
+            <h1 className="text-2xl font-black text-red-600">APROVA 80</h1>
             <p className="text-xs text-slate-400">Área Exclusiva de Alunos</p>
           </div>
 
@@ -1131,7 +1129,7 @@ export default function App() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-red-600"
                 />
               </div>
             </div>
@@ -1146,7 +1144,7 @@ export default function App() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-red-600"
                 />
                 <button
                   type="button"
@@ -1161,7 +1159,7 @@ export default function App() {
             <button
               type="submit"
               disabled={authLoading}
-              className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
+              className="w-full py-3 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-500 transition disabled:opacity-50"
             >
               {authLoading ? 'Entrando...' : 'Acessar Plataforma'}
             </button>
@@ -1169,7 +1167,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => { setShowForgotPassword(true); setForgotEmail(email); }}
-              className="w-full text-center text-[11px] text-slate-400 hover:text-amber-500 transition cursor-pointer"
+              className="w-full text-center text-[11px] text-slate-400 hover:text-red-600 transition cursor-pointer"
             >
               Esqueci minha senha
             </button>
@@ -1177,7 +1175,7 @@ export default function App() {
 
           <button
             onClick={() => setShowSignup(true)}
-            className="w-full py-2.5 border border-amber-500/30 text-amber-500 font-bold text-xs rounded-xl hover:bg-amber-500/10 transition cursor-pointer"
+            className="w-full py-2.5 border border-red-600/30 text-red-600 font-bold text-xs rounded-xl hover:bg-red-600/10 transition cursor-pointer"
           >
             Testar grátis por 7 dias
           </button>
@@ -1198,10 +1196,10 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
         <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-6 shadow-2xl">
           <div className="text-center space-y-1">
-            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
-              <Lock className="w-5 h-5 text-amber-500" />
+            <div className="w-12 h-12 bg-red-600/10 border border-red-600/20 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Lock className="w-5 h-5 text-red-600" />
             </div>
-            <h1 className="text-xl font-black text-amber-500">Crie sua senha definitiva</h1>
+            <h1 className="text-xl font-black text-red-600">Crie sua senha definitiva</h1>
             <p className="text-xs text-slate-400">Por segurança, defina uma nova senha para continuar.</p>
           </div>
 
@@ -1222,7 +1220,7 @@ export default function App() {
                   value={novaSenha}
                   onChange={(e) => setNovaSenha(e.target.value)}
                   placeholder="Mínimo 8 caracteres"
-                  className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-red-600"
                 />
                 <button
                   type="button"
@@ -1244,7 +1242,7 @@ export default function App() {
                   value={confirmaSenha}
                   onChange={(e) => setConfirmaSenha(e.target.value)}
                   placeholder="Repita a nova senha"
-                  className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-amber-500"
+                  className="w-full pl-9 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 outline-none focus:border-red-600"
                 />
                 <button
                   type="button"
@@ -1259,7 +1257,7 @@ export default function App() {
             <button
               type="submit"
               disabled={trocandoSenha}
-              className="w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition disabled:opacity-50"
+              className="w-full py-3 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-500 transition disabled:opacity-50"
             >
               {trocandoSenha ? 'Salvando...' : 'Definir Senha e Continuar'}
             </button>
@@ -1279,11 +1277,11 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
         <div className="bg-slate-800 border border-slate-700/60 p-6 rounded-2xl w-full max-w-sm space-y-5 shadow-2xl text-center">
-          <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto">
-            <Lock className="w-6 h-6 text-amber-500" />
+          <div className="w-14 h-14 bg-red-600/10 border border-red-600/20 rounded-full flex items-center justify-center mx-auto">
+            <Lock className="w-6 h-6 text-red-600" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-amber-500">
+            <h1 className="text-xl font-black text-red-600">
               {ehTeste ? 'Seu teste grátis acabou' : 'Sua assinatura venceu'}
             </h1>
             <p className="text-xs text-slate-400 mt-2">
@@ -1294,7 +1292,7 @@ export default function App() {
           </div>
           <a
             href="https://aprova80.netlify.app/#planos"
-            className="block w-full py-3 bg-amber-500 text-slate-950 font-bold text-sm rounded-xl hover:bg-amber-400 transition"
+            className="block w-full py-3 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-500 transition"
           >
             Ver planos e assinar
           </a>
@@ -1321,13 +1319,13 @@ export default function App() {
       {/* MENU LATERAL — SOMENTE DESKTOP */}
       <aside className="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:h-screen md:sticky md:top-0 bg-slate-900 border-r border-slate-800 p-5 print:hidden">
         <div className="mb-8">
-          <h1 className="text-xl font-bold tracking-wider text-amber-500">APROVA 80</h1>
+          <h1 className="text-xl font-bold tracking-wider text-red-600">APROVA 80</h1>
           <p className="text-xs text-slate-400">Preparatório de Elite</p>
         </div>
 
         <div className="flex items-center gap-2 mb-6">
-          <div className="flex items-center gap-1 bg-amber-500/10 text-amber-500 px-3 py-1.5 rounded-full border border-amber-500/20 text-sm font-bold">
-            <Flame className="w-4 h-4 fill-amber-500" />
+          <div className="flex items-center gap-1 bg-red-600/10 text-red-600 px-3 py-1.5 rounded-full border border-red-600/20 text-sm font-bold">
+            <Flame className="w-4 h-4 fill-red-600" />
             <span>{streak} de sequência</span>
           </div>
         </div>
@@ -1347,7 +1345,7 @@ export default function App() {
               onClick={() => setActiveTab(id)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer text-left ${
                 activeTab === id
-                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                  ? 'bg-red-600/10 text-red-600 border border-red-600/20'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-transparent'
               }`}
             >
@@ -1384,7 +1382,7 @@ export default function App() {
           {/* CABEÇALHO — SOMENTE MOBILE */}
           <header className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/90 backdrop-blur sticky top-0 z-20 print:hidden md:hidden">
             <div>
-              <h1 className="text-xl font-bold tracking-wider text-amber-500">APROVA 80</h1>
+              <h1 className="text-xl font-bold tracking-wider text-red-600">APROVA 80</h1>
               <p className="text-xs text-slate-400">Preparatório de Elite</p>
             </div>
             <div className="flex items-center gap-2">
@@ -1398,8 +1396,8 @@ export default function App() {
                   <span>Instalar</span>
                 </button>
               )}
-              <div className="flex items-center gap-1 bg-amber-500/10 text-amber-500 px-3 py-1 rounded-full border border-amber-500/20 text-sm font-bold">
-                <Flame className="w-4 h-4 fill-amber-500" />
+              <div className="flex items-center gap-1 bg-red-600/10 text-red-600 px-3 py-1 rounded-full border border-red-600/20 text-sm font-bold">
+                <Flame className="w-4 h-4 fill-red-600" />
                 <span>{streak}</span>
               </div>
               <button
@@ -1417,8 +1415,8 @@ export default function App() {
             <h2 className="text-lg font-bold text-slate-200">
               {NAV_ITEMS.find(n => n.id === activeTab)?.label}
             </h2>
-            <div className="flex items-center gap-1 bg-amber-500/10 text-amber-500 px-3 py-1 rounded-full border border-amber-500/20 text-sm font-bold">
-              <Flame className="w-4 h-4 fill-amber-500" />
+            <div className="flex items-center gap-1 bg-red-600/10 text-red-600 px-3 py-1 rounded-full border border-red-600/20 text-sm font-bold">
+              <Flame className="w-4 h-4 fill-red-600" />
               <span>{streak} de sequência</span>
             </div>
           </div>
@@ -1437,8 +1435,8 @@ export default function App() {
                     </p>
                   </div>
                 )}
-                <div className="p-6 md:p-8 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl text-slate-950 font-bold space-y-2 shadow-lg">
-                  <span className="text-xs uppercase tracking-wider bg-slate-950/20 px-2 py-0.5 rounded text-slate-950">
+                <div className="p-6 md:p-8 bg-gradient-to-br from-red-600 to-red-700 rounded-2xl text-white font-bold space-y-2 shadow-lg">
+                  <span className="text-xs uppercase tracking-wider bg-slate-950/20 px-2 py-0.5 rounded text-white">
                     Meta Diária
                   </span>
                   <h2 className="text-2xl md:text-3xl font-black">Foco na Aprovação!</h2>
@@ -1447,9 +1445,9 @@ export default function App() {
                   </p>
                   <button 
                     onClick={() => setActiveTab('simulado')}
-                    className="mt-4 w-full md:w-auto md:px-8 py-3 bg-slate-950 text-amber-500 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-900 transition cursor-pointer"
+                    className="mt-4 w-full md:w-auto md:px-8 py-3 bg-slate-950 text-red-600 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-900 transition cursor-pointer"
                   >
-                    <Zap className="w-5 h-5 fill-amber-500" />
+                    <Zap className="w-5 h-5 fill-red-600" />
                     Começar Simulado
                   </button>
                 </div>
@@ -1469,16 +1467,16 @@ export default function App() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div 
                     onClick={() => setActiveTab('materiais')}
-                    className="p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-amber-500/50 transition"
+                    className="p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-red-600/50 transition"
                   >
-                    <BookOpen className="w-6 h-6 text-amber-400 mb-2" />
+                    <BookOpen className="w-6 h-6 text-red-500 mb-2" />
                     <h3 className="font-bold text-sm">Materiais</h3>
                     <p className="text-xs text-slate-400">{LISTA_DISCIPLINAS.length} Matérias</p>
                   </div>
 
                   <div 
                     onClick={() => setActiveTab('caderno')}
-                    className="p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-amber-500/50 transition"
+                    className="p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-red-600/50 transition"
                   >
                     <AlertTriangle className="w-6 h-6 text-red-400 mb-2" />
                     <h3 className="font-bold text-sm">Caderno de Erros</h3>
@@ -1487,7 +1485,7 @@ export default function App() {
 
                   <div 
                     onClick={() => setActiveTab('anotacoes')}
-                    className="p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-amber-500/50 transition"
+                    className="p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-red-600/50 transition"
                   >
                     <PenLine className="w-6 h-6 text-sky-400 mb-2" />
                     <h3 className="font-bold text-sm">Anotações</h3>
@@ -1496,7 +1494,7 @@ export default function App() {
 
                   <div 
                     onClick={() => setActiveTab('stats')}
-                    className="hidden md:block p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-amber-500/50 transition"
+                    className="hidden md:block p-4 bg-slate-800 border border-slate-700/50 rounded-xl cursor-pointer hover:border-red-600/50 transition"
                   >
                     <PieChart className="w-6 h-6 text-emerald-400 mb-2" />
                     <h3 className="font-bold text-sm">Desempenho</h3>
@@ -1512,7 +1510,7 @@ export default function App() {
                 
                 {/* PAINEL DE FILTROS */}
                 <div className="p-3 bg-slate-800/80 border border-slate-700/60 rounded-xl space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-red-600">
                     <Filter className="w-3.5 h-3.5" />
                     <span>Filtrar Treino:</span>
                   </div>
@@ -1523,7 +1521,7 @@ export default function App() {
                         setFilterDiscipline(e.target.value);
                         setFilterTopic('Todos');
                       }}
-                      className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:border-amber-500 outline-none"
+                      className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:border-red-600 outline-none"
                     >
                       <option value="Todas">Toda Disciplina</option>
                       {LISTA_DISCIPLINAS.map(d => (
@@ -1534,7 +1532,7 @@ export default function App() {
                     <select
                       value={filterTopic}
                       onChange={(e) => setFilterTopic(e.target.value)}
-                      className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:border-amber-500 outline-none"
+                      className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:border-red-600 outline-none"
                     >
                       {(ESTRUTURA_MATERIAS[filterDiscipline] || ['Todos']).map(t => (
                         <option key={t} value={t}>{t === 'Todos' ? 'Todo Assunto' : t}</option>
@@ -1560,7 +1558,7 @@ export default function App() {
                   <>
                     <div className="flex justify-between items-center text-xs text-slate-400">
                       <div className="flex gap-1.5 items-center">
-                        <span className="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-amber-500 font-semibold">
+                        <span className="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-red-600 font-semibold">
                           {currentQuestion.discipline}
                         </span>
                         <span className="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-400">
@@ -1585,7 +1583,7 @@ export default function App() {
                           if (isCorrect) btnStyle = "bg-emerald-500/20 border-emerald-500 text-emerald-300";
                           else if (isSelected) btnStyle = "bg-red-500/20 border-red-500 text-red-300";
                         } else if (isSelected) {
-                          btnStyle = "bg-amber-500/20 border-amber-500 text-amber-300";
+                          btnStyle = "bg-red-600/20 border-red-600 text-red-400";
                         }
 
                         return (
@@ -1617,7 +1615,7 @@ export default function App() {
                         <button
                           disabled={!selectedOption}
                           onClick={handleConfirmAnswer}
-                          className="flex-1 md:flex-none md:px-10 py-3 bg-amber-500 text-slate-950 font-bold rounded-xl disabled:opacity-50 transition cursor-pointer"
+                          className="flex-1 md:flex-none md:px-10 py-3 bg-red-600 text-white font-bold rounded-xl disabled:opacity-50 transition cursor-pointer"
                         >
                           Responder
                         </button>
@@ -1633,7 +1631,7 @@ export default function App() {
                       <div className="space-y-3">
                         {currentQuestion.explanation && (
                           <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs text-slate-300 space-y-1">
-                            <span className="font-bold text-amber-500 flex items-center gap-1">
+                            <span className="font-bold text-red-600 flex items-center gap-1">
                               <FileText className="w-3.5 h-3.5" /> Comentário:
                             </span>
                             <p>{currentQuestion.explanation}</p>
@@ -1642,7 +1640,7 @@ export default function App() {
                         <div className="flex items-center justify-between gap-2">
                           <button
                             onClick={handleOpenComments}
-                            className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-amber-500 transition cursor-pointer"
+                            className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-red-600 transition cursor-pointer"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
                             Comentários dos alunos
@@ -1656,7 +1654,7 @@ export default function App() {
                         </div>
                         <button
                           onClick={handleNextQuestion}
-                          className="w-full md:w-auto md:px-10 py-3 bg-slate-800 border border-slate-700 text-amber-500 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-700 transition cursor-pointer"
+                          className="w-full md:w-auto md:px-10 py-3 bg-slate-800 border border-slate-700 text-red-600 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-700 transition cursor-pointer"
                         >
                           Próxima Questão
                           <ChevronRight className="w-4 h-4" />
@@ -1680,7 +1678,7 @@ export default function App() {
                 >
                   {/* Cabeçalho do painel */}
                   <div className="flex items-center justify-between p-4 border-b border-slate-700 shrink-0">
-                    <h3 className="font-bold text-sm text-amber-500 flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-red-600 flex items-center gap-2">
                       <MessageCircle className="w-4 h-4" />
                       Comentários dos alunos
                     </h3>
@@ -1704,7 +1702,7 @@ export default function App() {
                       comments.map((c) => (
                         <div key={c.id} className="bg-slate-900/60 border border-slate-700/60 rounded-xl p-3">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-[11px] font-bold text-amber-500">
+                            <span className="text-[11px] font-bold text-red-600">
                               {c.user_email?.split('@')[0] || 'Anônimo'}
                             </span>
                             <span className="text-[10px] text-slate-500">
@@ -1724,12 +1722,12 @@ export default function App() {
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Escreva um comentário sobre essa questão..."
                       rows={2}
-                      className="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-amber-500 resize-none"
+                      className="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-red-600 resize-none"
                     />
                     <button
                       onClick={handleSubmitComment}
                       disabled={commentSubmitting || !newComment.trim()}
-                      className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 p-2.5 rounded-xl transition cursor-pointer shrink-0"
+                      className="bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white p-2.5 rounded-xl transition cursor-pointer shrink-0"
                     >
                       <Send className="w-4 h-4" />
                     </button>
@@ -1754,7 +1752,7 @@ export default function App() {
                   ) : (
                     <>
                       <div>
-                        <h3 className="font-bold text-sm text-amber-500">Reportar erro na questão</h3>
+                        <h3 className="font-bold text-sm text-red-600">Reportar erro na questão</h3>
                         <p className="text-xs text-slate-400 mt-1">Descreva o que está errado (gabarito incorreto, enunciado confuso, etc.)</p>
                       </div>
                       <textarea
@@ -1762,7 +1760,7 @@ export default function App() {
                         onChange={(e) => setReportText(e.target.value)}
                         placeholder="Ex: O gabarito está marcado como C, mas a resposta correta é B..."
                         rows={4}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 outline-none focus:border-amber-500 resize-none"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 outline-none focus:border-red-600 resize-none"
                       />
                       <div className="flex gap-2">
                         <button
@@ -1775,7 +1773,7 @@ export default function App() {
                         <button
                           onClick={handleSubmitReport}
                           disabled={reportSubmitting || !reportText.trim()}
-                          className="flex-1 py-2.5 bg-amber-500 text-slate-950 rounded-xl text-xs font-bold hover:bg-amber-400 transition cursor-pointer disabled:opacity-50"
+                          className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-500 transition cursor-pointer disabled:opacity-50"
                         >
                           {reportSubmitting ? 'Enviando...' : 'Enviar Report'}
                         </button>
@@ -1790,13 +1788,13 @@ export default function App() {
             {activeTab === 'materiais' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-bold flex items-center gap-2 text-amber-500 md:hidden">
+                  <h2 className="text-lg font-bold flex items-center gap-2 text-red-600 md:hidden">
                     <BookOpen className="w-5 h-5" /> Materiais de Estudo
                   </h2>
                   <div className="hidden md:block" />
                   <button
                     onClick={handlePrintPDF}
-                    className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow cursor-pointer"
+                    className="flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Baixar PDF</span>
@@ -1813,7 +1811,7 @@ export default function App() {
                       }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
                         selectedDiscipline === disc
-                          ? 'bg-amber-500 text-slate-950'
+                          ? 'bg-red-600 text-white'
                           : 'bg-slate-800 text-slate-400 hover:text-slate-200'
                       }`}
                     >
@@ -1826,7 +1824,7 @@ export default function App() {
                   <button
                     onClick={() => setMaterialTab('resumo')}
                     className={`py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                      materialTab === 'resumo' ? 'bg-slate-700 text-amber-500' : 'text-slate-400'
+                      materialTab === 'resumo' ? 'bg-slate-700 text-red-600' : 'text-slate-400'
                     }`}
                   >
                     📄 Resumo
@@ -1834,21 +1832,21 @@ export default function App() {
                   <button
                     onClick={() => setMaterialTab('mapa_mental')}
                     className={`py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                      materialTab === 'mapa_mental' ? 'bg-slate-700 text-amber-500' : 'text-slate-400'
+                      materialTab === 'mapa_mental' ? 'bg-slate-700 text-red-600' : 'text-slate-400'
                     }`}
                   >
                     🧠 Mapa Mental
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-red-600">
                   <Filter className="w-3.5 h-3.5" />
                   <span>Filtrar por Assunto:</span>
                 </div>
                 <select
                   value={materialTopic}
                   onChange={(e) => setMaterialTopic(e.target.value)}
-                  className="w-full md:max-w-sm bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-2.5 focus:border-amber-500 outline-none"
+                  className="w-full md:max-w-sm bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-2.5 focus:border-red-600 outline-none"
                 >
                   {(ESTRUTURA_MATERIAS[selectedDiscipline] || ['Todos']).map((t) => (
                     <option key={t} value={t}>{t === 'Todos' ? 'Todos os Assuntos' : t}</option>
@@ -1871,7 +1869,7 @@ export default function App() {
                     {materiaisFiltrados.map((m) => (
                       <div key={m.id} className="p-4 md:p-6 bg-slate-800 border border-slate-700/60 rounded-xl">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <h3 className="font-bold text-sm text-amber-500">{m.title}</h3>
+                          <h3 className="font-bold text-sm text-red-600">{m.title}</h3>
                           {m.topic && (
                             <span className="text-[10px] bg-slate-900 border border-slate-700 text-slate-400 px-2 py-0.5 rounded-full">
                               {m.topic}
@@ -1945,7 +1943,7 @@ export default function App() {
                   {cadernoErros.length > 0 && (
                     <button
                       onClick={handlePrintPDF}
-                      className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-amber-500 border border-amber-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+                      className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-red-600 border border-red-600/30 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
                     >
                       <Printer className="w-3.5 h-3.5" />
                       <span>Imprimir / PDF</span>
@@ -1956,7 +1954,7 @@ export default function App() {
                 {/* PAINEL DE ESTATÍSTICA DE ERROS POR ASSUNTO */}
                 {cadernoErros.length > 0 && (
                   <div className="p-4 bg-slate-800/90 border border-slate-700 rounded-xl space-y-3">
-                    <h3 className="text-xs font-bold text-amber-500 uppercase tracking-wide flex items-center gap-1.5">
+                    <h3 className="text-xs font-bold text-red-600 uppercase tracking-wide flex items-center gap-1.5">
                       <PieChart className="w-4 h-4" /> Distribuição de Dificuldade por Assunto
                     </h3>
                     <div className="space-y-2 md:grid md:grid-cols-2 md:gap-x-6 md:space-y-0">
@@ -1993,7 +1991,7 @@ export default function App() {
                       {/* Cabeçalho da Questão no Caderno */}
                       <div className="flex justify-between items-center text-xs">
                         <div className="flex items-center gap-2">
-                          <span className="text-amber-500 font-semibold">{q.discipline}</span>
+                          <span className="text-red-600 font-semibold">{q.discipline}</span>
                           <span className="text-slate-500">•</span>
                           <span className="text-slate-400 text-[11px]">{q.topic}</span>
                         </div>
@@ -2021,7 +2019,7 @@ export default function App() {
                       {/* Comentário / Explicação */}
                       {q.explanation ? (
                         <div className="p-3 bg-slate-900/80 rounded-lg border border-slate-700/60 text-xs text-slate-300 space-y-1">
-                          <span className="font-bold text-amber-500 flex items-center gap-1.5">
+                          <span className="font-bold text-red-600 flex items-center gap-1.5">
                             <FileText className="w-3.5 h-3.5" /> Comentário do Gabarito:
                           </span>
                           <p className="leading-relaxed text-slate-300">{q.explanation}</p>
@@ -2042,7 +2040,7 @@ export default function App() {
             {/* DESEMPENHO E ESTATÍSTICAS */}
             {activeTab === 'stats' && (
               <div className="space-y-4">
-                <h2 className="text-lg font-bold flex items-center gap-2 text-amber-500 md:hidden">
+                <h2 className="text-lg font-bold flex items-center gap-2 text-red-600 md:hidden">
                   <PieChart className="w-5 h-5" /> Desempenho Geral
                 </h2>
 
@@ -2101,7 +2099,7 @@ export default function App() {
                 key={id}
                 onClick={() => setActiveTab(id)}
                 className={`flex flex-col items-center gap-1 text-[10px] font-bold transition cursor-pointer shrink-0 px-1 ${
-                  activeTab === id ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'
+                  activeTab === id ? 'text-red-600' : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
                 <Icon className="w-4 h-4" />
